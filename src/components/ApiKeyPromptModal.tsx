@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { regenerateAgentAssistantMessage, submitAgentMessage, submitTask, useStore } from '../store'
+import { getAllApiKeyPromptProfileIds, regenerateAgentAssistantMessage, submitAgentMessage, submitTask, useStore } from '../store'
 import { usePreventBackgroundScroll } from '../hooks/usePreventBackgroundScroll'
 import { getSub2ApiKeys, parseSub2ApiKeyParams, type Sub2ApiKey } from '../lib/sub2apiKeys'
 
@@ -48,9 +48,17 @@ export default function ApiKeyPromptModal() {
     getSub2ApiKeys(params)
       .then((keys) => {
         setSub2ApiKeys(keys)
-        setCustomKeyMode(false)
-        const hasExistingKey = apiKeyPrompt.profileIds.some((id) => settings.profiles.find((profile) => profile.id === id)?.apiKey.trim())
-        if (!hasExistingKey && keys.length > 0) setApiKey(keys[0].key)
+        // 已配置的 key（弹窗预填值）：不在 sub2api Key 列表中时保持手动输入模式，
+        // 避免下拉框显示与实际 state 不一致（下拉显示首项但保存的仍是旧 key）。
+        const configuredKey = profiles.find((profile) => profile.apiKey.trim())?.apiKey ?? ''
+        if (!configuredKey) {
+          setCustomKeyMode(false)
+          if (keys.length > 0) setApiKey(keys[0].key)
+        } else if (keys.some((key) => key.key === configuredKey)) {
+          setCustomKeyMode(false)
+        } else {
+          setCustomKeyMode(true)
+        }
       })
       .catch((err) => {
         console.warn('Failed to fetch sub2api keys:', err)
@@ -70,9 +78,14 @@ export default function ApiKeyPromptModal() {
       return
     }
 
-    const profileIds = new Set(apiKeyPrompt.profileIds)
+    // 简易配置为同步源：在弹窗打开时的 profileIds 基础上，补充当前设置中的
+    // 活跃 + Agent 图像/文本 profile，确保图像模型与文本模型的 key 始终一起更新。
+    const targetIds = new Set([
+      ...apiKeyPrompt.profileIds,
+      ...getAllApiKeyPromptProfileIds(settings),
+    ])
     setSettings({
-      profiles: settings.profiles.map((profile) => profileIds.has(profile.id)
+      profiles: settings.profiles.map((profile) => targetIds.has(profile.id)
         ? { ...profile, apiKey: nextApiKey }
         : profile,
       ),
