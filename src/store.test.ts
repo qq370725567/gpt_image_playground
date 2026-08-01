@@ -3772,6 +3772,73 @@ describe('task deletion', () => {
   })
 })
 
+describe('agent text model selection', () => {
+  const responsesProfile = createDefaultOpenAIProfile({
+    id: 'responses-profile',
+    apiKey: 'test-key',
+    apiMode: 'responses',
+    model: DEFAULT_RESPONSES_MODEL,
+    streamImages: true,
+  })
+  const imageProfile = createDefaultOpenAIProfile({ id: 'image-profile', apiKey: 'image-key', apiMode: 'images' })
+
+  beforeEach(async () => {
+    await clearTasks()
+    await clearImages()
+    await clearAgentConversations()
+    vi.mocked(callAgentResponsesApi).mockReset()
+    vi.mocked(callImageApi).mockReset()
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        apiKey: 'test-key',
+        profiles: [responsesProfile, imageProfile],
+        activeProfileId: responsesProfile.id,
+        agentApiConfigMode: 'hybrid',
+        agentTextProfileId: responsesProfile.id,
+        agentImageProfileId: imageProfile.id,
+      }),
+      prompt: '画一张图',
+      inputImages: [],
+      maskDraft: null,
+      params: { ...DEFAULT_PARAMS },
+      appMode: 'agent',
+      agentConversations: [],
+    })
+  })
+
+  it('sends the default text model with the openai/ prefix', async () => {
+    vi.mocked(callAgentResponsesApi).mockResolvedValueOnce({
+      text: '',
+      images: [],
+      outputItems: [],
+      responseId: 'response-text-model-default',
+    })
+
+    await submitAgentMessage()
+    await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
+
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-luna')
+  })
+
+  it('sends the selected text model with the openai/ prefix', async () => {
+    useStore.setState({
+      settings: normalizeSettings({ ...useStore.getState().settings, textModel: 'gpt-5.6-terra' }),
+    })
+    vi.mocked(callAgentResponsesApi).mockResolvedValueOnce({
+      text: '',
+      images: [],
+      outputItems: [],
+      responseId: 'response-text-model-terra',
+    })
+
+    await submitAgentMessage()
+    await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
+
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-terra')
+  })
+})
+
 describe('agent built-in image tool failure', () => {
   const responsesProfile = createDefaultOpenAIProfile({
     id: 'responses-profile',

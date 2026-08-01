@@ -10,6 +10,7 @@ import SearchBar from './components/SearchBar'
 import TaskGrid from './components/TaskGrid'
 import AgentWorkspace from './components/AgentWorkspace'
 import InputBar from './components/InputBar'
+import ModelSelectorPanel from './components/ModelSelectorPanel'
 import DetailModal from './components/DetailModal'
 import Lightbox from './components/Lightbox'
 import SettingsModal from './components/SettingsModal'
@@ -167,6 +168,7 @@ export default function App() {
         </main>
       )}
       <InputBar />
+      <ModelSelectorPanel />
       <DetailModal />
       <Lightbox />
       <SettingsModal />

@@ -30,6 +30,8 @@ const DEFAULT_API_URL_PATCH = isImportableConfigUrl(RAW_DEFAULT_API_URL)
 export const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
 export const DEFAULT_IMAGES_MODEL = 'gpt-image-2'
 export const DEFAULT_RESPONSES_MODEL = 'openai/gpt-5.6-sol'
+export const TEXT_MODEL_VALUES = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'] as const
+export const DEFAULT_TEXT_MODEL = 'gpt-5.6-luna'
 export const DEFAULT_FAL_BASE_URL = 'https://fal.run'
 export const DEFAULT_FAL_MODEL = 'openai/gpt-image-2'
 export const DEFAULT_OPENAI_PROFILE_ID = 'default-openai'
@@ -566,6 +568,9 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
   const agentImageProfileId = typeof record.agentImageProfileId === 'string' && profiles.some((p) => p.id === record.agentImageProfileId)
     ? record.agentImageProfileId
     : active.id
+  const textModel = typeof record.textModel === 'string' && TEXT_MODEL_VALUES.includes(record.textModel as (typeof TEXT_MODEL_VALUES)[number])
+    ? record.textModel as (typeof TEXT_MODEL_VALUES)[number]
+    : DEFAULT_TEXT_MODEL
 
   return {
     baseUrl: active.baseUrl,
@@ -591,6 +596,7 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
     agentMaxToolRounds: normalizeAgentMaxToolRounds(record.agentMaxToolRounds),
     agentWebSearch: typeof record.agentWebSearch === 'boolean' ? record.agentWebSearch : false,
     agentMathFormattingPrompt: typeof record.agentMathFormattingPrompt === 'boolean' ? record.agentMathFormattingPrompt : true,
+    textModel,
     agentApiConfigMode,
     agentTextProfileId,
     agentImageProfileId,
@@ -603,6 +609,13 @@ export function getAgentTextApiProfile(settings: Partial<AppSettings> | unknown)
   const normalized = normalizeSettings(settings)
   if (normalized.agentApiConfigMode === 'off') return getActiveApiProfile(normalized)
   return normalized.profiles.find((profile) => profile.id === normalized.agentTextProfileId) ?? null
+}
+
+/** 实际发送请求的文本模型 profile：在 agentTextProfile 基础上按 settings.textModel 覆盖 model（自动加 openai/ 前缀） */
+export function getEffectiveAgentTextProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {
+  const base = getAgentTextApiProfile(settings)
+  if (!base) return null
+  return { ...base, model: `openai/${normalizeSettings(settings).textModel}` }
 }
 
 export function getAgentImageApiProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {

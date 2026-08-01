@@ -19,7 +19,7 @@ import type {
   StoredImageThumbnail,
 } from './types'
 import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_PARAMS } from './types'
-import { DEFAULT_OPENAI_PROFILE_ID, DEFAULT_SETTINGS, DEFAULT_TEXT_PROFILE_ID, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, mergeImportedSettings, normalizeSettings, validateApiProfile } from './lib/apiProfiles'
+import { DEFAULT_OPENAI_PROFILE_ID, DEFAULT_SETTINGS, DEFAULT_TEXT_PROFILE_ID, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, getEffectiveAgentTextProfile, mergeImportedSettings, normalizeSettings, validateApiProfile } from './lib/apiProfiles'
 import { dismissAllTooltips } from './lib/tooltipDismiss'
 import { remapImageMentionsForOrder, replaceImageMentionsForApi } from './lib/promptImageMentions'
 import {
@@ -2260,7 +2260,7 @@ async function continueRecoveredAgentRound(taskId : string) {
       failRound(`无法继续恢复任务：${agentValidationError.message}`)
       return
     }
-    const activeProfile = getAgentTextApiProfile(normalizedSettings)
+    const activeProfile = getEffectiveAgentTextProfile(normalizedSettings)
     const imageProfile = getAgentImageApiProfile(normalizedSettings)
     if (!activeProfile || !imageProfile) {
       failRound('Agent API 配置不存在，无法继续恢复任务。')
@@ -2307,7 +2307,7 @@ export async function submitAgentMessage() {
   const { settings, prompt, inputImages, maskDraft, params, showToast } = state
   const normalizedSettings = normalizeSettings(settings)
 
-  const textProfile = getAgentTextApiProfile(normalizedSettings)
+  const textProfile = getEffectiveAgentTextProfile(normalizedSettings)
   const imageProfile = normalizedSettings.agentApiConfigMode === 'hybrid'
     ? getAgentImageApiProfile(normalizedSettings)
     : null
@@ -2473,7 +2473,7 @@ export async function regenerateAgentAssistantMessage(conversationId : string, r
   const { settings, params, showToast } = state
   const normalizedSettings = normalizeSettings(settings)
 
-  const textProfile = getAgentTextApiProfile(normalizedSettings)
+  const textProfile = getEffectiveAgentTextProfile(normalizedSettings)
   const imageProfile = normalizedSettings.agentApiConfigMode === 'hybrid'
     ? getAgentImageApiProfile(normalizedSettings)
     : null

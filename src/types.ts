@@ -111,6 +111,8 @@ export interface AppSettings {
   agentMaxToolRounds: number
   agentWebSearch: boolean
   agentMathFormattingPrompt: boolean
+  /** 文本模型（不带 openai/ 前缀，请求时由 getEffectiveAgentTextProfile 拼接） */
+  textModel: string
   agentApiConfigMode: AgentApiConfigMode
   agentTextProfileId?: string | null
   agentImageProfileId?: string | null

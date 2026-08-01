@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { DEFAULT_DROPDOWN_MAX_HEIGHT } from '../lib/dropdown'
 import { ChevronDownIcon, EditIcon, PlusIcon, TrashIcon, DragHandleIcon } from './icons'
@@ -8,6 +8,7 @@ import { useTooltip } from '../hooks/useTooltip'
 interface Option {
   label: string
   value: string | number
+  tooltip?: ReactNode
   variant?: 'action' | 'danger'
   draggable?: boolean
   actions?: Array<{
@@ -421,8 +422,8 @@ export default function Select({ value, onChange, onReorder, options, disabled, 
                 <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-blue-500 rounded-full z-40 shadow-sm pointer-events-none" />
               )}
               {showValueTooltips && hoveredOptionTooltip === option.value && (
-                <ViewportTooltip visible={true} className="max-w-[300px] break-words whitespace-pre-wrap">
-                  {option.label}
+                <ViewportTooltip visible={true} placement="left" className="max-w-[300px] break-words whitespace-pre-wrap">
+                  {option.tooltip ?? option.label}
                 </ViewportTooltip>
               )}
               <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">

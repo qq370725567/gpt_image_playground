@@ -7,10 +7,12 @@ import {
   DEFAULT_RESPONSES_MODEL,
   DEFAULT_TEXT_PROFILE_ID,
   DEFAULT_SETTINGS,
+  DEFAULT_TEXT_MODEL,
   createDefaultOpenAIProfile,
   createDefaultFalProfile,
   getActiveApiProfile,
   findEquivalentApiProfile,
+  getEffectiveAgentTextProfile,
   importCustomProviderDefinitionFromJson,
   importCustomProviderSettingsFromJson,
   mergeImportedSettings,
@@ -140,6 +142,70 @@ describe('default profiles', () => {
     })
 
     expect(normalized.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('text-key')
+  })
+})
+
+describe('textModel', () => {
+  it('defaults to gpt-5.6-luna', () => {
+    expect(DEFAULT_SETTINGS.textModel).toBe(DEFAULT_TEXT_MODEL)
+    expect(normalizeSettings({}).textModel).toBe(DEFAULT_TEXT_MODEL)
+  })
+
+  it('passes through supported values', () => {
+    for (const value of ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'] as const) {
+      expect(normalizeSettings({ textModel: value }).textModel).toBe(value)
+    }
+  })
+
+  it('falls back to the default for invalid values', () => {
+    expect(normalizeSettings({ textModel: 'openai/gpt-5.6-luna' }).textModel).toBe(DEFAULT_TEXT_MODEL)
+    expect(normalizeSettings({ textModel: 'gpt-4o' }).textModel).toBe(DEFAULT_TEXT_MODEL)
+    expect(normalizeSettings({ textModel: 42 }).textModel).toBe(DEFAULT_TEXT_MODEL)
+  })
+})
+
+describe('getEffectiveAgentTextProfile', () => {
+  const buildSettings = (textModel?: string) => normalizeSettings({
+    agentApiConfigMode: 'hybrid',
+    profiles: [
+      createDefaultOpenAIProfile({ apiKey: 'image-key' }),
+      createDefaultOpenAIProfile({
+        id: DEFAULT_TEXT_PROFILE_ID,
+        apiKey: 'text-key',
+        model: DEFAULT_RESPONSES_MODEL,
+        apiMode: 'responses',
+        streamImages: true,
+      }),
+    ],
+    textModel,
+  })
+
+  it('overrides the text profile model with the openai/ prefixed default', () => {
+    const effective = getEffectiveAgentTextProfile(buildSettings())
+    expect(effective).not.toBeNull()
+    expect(effective!.id).toBe(DEFAULT_TEXT_PROFILE_ID)
+    expect(effective!.model).toBe('openai/gpt-5.6-luna')
+    expect(effective!.apiKey).toBe('text-key')
+  })
+
+  it('uses the selected text model with the openai/ prefix', () => {
+    const effective = getEffectiveAgentTextProfile(buildSettings('gpt-5.6-sol'))
+    expect(effective!.model).toBe('openai/gpt-5.6-sol')
+  })
+
+  it('does not mutate the underlying profile', () => {
+    const settings = buildSettings('gpt-5.6-sol')
+    const before = settings.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)!.model
+    getEffectiveAgentTextProfile(settings)
+    expect(settings.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)!.model).toBe(before)
+  })
+
+  it('returns null when no text profile exists', () => {
+    const settings = normalizeSettings({
+      agentApiConfigMode: 'hybrid',
+      profiles: [createDefaultOpenAIProfile({ apiKey: 'image-key' })],
+    })
+    expect(getEffectiveAgentTextProfile(settings)).toBeNull()
   })
 })
 

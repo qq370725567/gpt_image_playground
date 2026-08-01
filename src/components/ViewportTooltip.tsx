@@ -6,16 +6,19 @@ interface ViewportTooltipProps {
   visible: boolean
   children: ReactNode
   className?: string
+  /** 提示方向：top 显示在锚点上方（空间不足时自动下方），left 固定在锚点左侧垂直居中 */
+  placement?: 'top' | 'left'
 }
 
-export default function ViewportTooltip({ visible, children, className = '' }: ViewportTooltipProps) {
+export default function ViewportTooltip({ visible, children, className = '', placement = 'top' }: ViewportTooltipProps) {
   const anchorRef = useRef<HTMLSpanElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{
     left: number
     top: number
-    arrowLeft: number
-    placement: 'top' | 'bottom'
+    arrowLeft?: number
+    arrowTop?: number
+    placement: 'top' | 'bottom' | 'left'
   } | null>(null)
 
   // Global dismiss: when any modal opens, suppress the tooltip even if
@@ -85,18 +88,30 @@ export default function ViewportTooltip({ visible, children, className = '' }: V
       }
 
       const tooltipRect = el.getBoundingClientRect()
+      if (placement === 'left') {
+        const top = Math.min(Math.max(anchorRect.top + anchorRect.height / 2 - tooltipRect.height / 2, margin), window.innerHeight - tooltipRect.height - margin)
+        const left = Math.max(margin, anchorRect.left - tooltipRect.width - gap)
+        const anchorCenterY = anchorRect.top + anchorRect.height / 2
+        setPosition({
+          left,
+          top,
+          arrowTop: anchorCenterY - top,
+          placement: 'left',
+        })
+        return
+      }
       const anchorCenter = anchorRect.left + anchorRect.width / 2
       const maxLeft = Math.max(margin, window.innerWidth - tooltipRect.width - margin)
       const left = Math.min(Math.max(anchorCenter - tooltipRect.width / 2, margin), maxLeft)
       const aboveTop = anchorRect.top - tooltipRect.height - gap
-      const placement = aboveTop >= margin ? 'top' : 'bottom'
-      const top = placement === 'top' ? aboveTop : anchorRect.bottom + gap
+      const verticalPlacement = aboveTop >= margin ? 'top' : 'bottom'
+      const top = verticalPlacement === 'top' ? aboveTop : anchorRect.bottom + gap
 
       setPosition({
         left,
         top,
         arrowLeft: anchorCenter - left,
-        placement,
+        placement: verticalPlacement,
       })
     }
 
@@ -124,13 +139,23 @@ export default function ViewportTooltip({ visible, children, className = '' }: V
           }}
         >
           {children}
-          <div
-            className={`absolute left-0 border-4 border-transparent ${position?.placement === 'bottom' ? 'bottom-full border-b-gray-800' : 'top-full border-t-gray-800'}`}
-            style={{
-              left: position?.arrowLeft ?? 0,
-              transform: 'translateX(-50%)',
-            }}
-          />
+          {position?.placement === 'left' ? (
+            <div
+              className="absolute top-0 left-full border-4 border-transparent border-l-gray-800"
+              style={{
+                top: position.arrowTop ?? 0,
+                transform: 'translateY(-50%)',
+              }}
+            />
+          ) : (
+            <div
+              className={`absolute left-0 border-4 border-transparent ${position?.placement === 'bottom' ? 'bottom-full border-b-gray-800' : 'top-full border-t-gray-800'}`}
+              style={{
+                left: position?.arrowLeft ?? 0,
+                transform: 'translateX(-50%)',
+              }}
+            />
+          )}
         </div>,
         document.body,
       )}
