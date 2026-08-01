@@ -3818,7 +3818,7 @@ describe('agent text model selection', () => {
     await submitAgentMessage()
     await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
 
-    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-luna')
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-sol')
   })
 
   it('sends the selected text model with the openai/ prefix', async () => {

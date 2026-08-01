@@ -146,7 +146,7 @@ describe('default profiles', () => {
 })
 
 describe('textModel', () => {
-  it('defaults to gpt-5.6-luna', () => {
+  it('defaults to gpt-5.6-sol', () => {
     expect(DEFAULT_SETTINGS.textModel).toBe(DEFAULT_TEXT_MODEL)
     expect(normalizeSettings({}).textModel).toBe(DEFAULT_TEXT_MODEL)
   })
@@ -158,7 +158,7 @@ describe('textModel', () => {
   })
 
   it('falls back to the default for invalid values', () => {
-    expect(normalizeSettings({ textModel: 'openai/gpt-5.6-luna' }).textModel).toBe(DEFAULT_TEXT_MODEL)
+    expect(normalizeSettings({ textModel: 'openai/gpt-5.6-sol' }).textModel).toBe(DEFAULT_TEXT_MODEL)
     expect(normalizeSettings({ textModel: 'gpt-4o' }).textModel).toBe(DEFAULT_TEXT_MODEL)
     expect(normalizeSettings({ textModel: 42 }).textModel).toBe(DEFAULT_TEXT_MODEL)
   })
@@ -184,7 +184,7 @@ describe('getEffectiveAgentTextProfile', () => {
     const effective = getEffectiveAgentTextProfile(buildSettings())
     expect(effective).not.toBeNull()
     expect(effective!.id).toBe(DEFAULT_TEXT_PROFILE_ID)
-    expect(effective!.model).toBe('openai/gpt-5.6-luna')
+    expect(effective!.model).toBe('openai/gpt-5.6-sol')
     expect(effective!.apiKey).toBe('text-key')
   })
 
