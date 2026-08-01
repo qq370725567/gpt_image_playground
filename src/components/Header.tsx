@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useStore } from '../store'
+import { getAllApiKeyPromptProfileIds, useStore } from '../store'
 import { useVersionCheck } from '../hooks/useVersionCheck'
 import { useTooltip } from '../hooks/useTooltip'
 import { dismissAllTooltips } from '../lib/tooltipDismiss'
@@ -7,7 +7,7 @@ import ViewportTooltip from './ViewportTooltip'
 import HelpModal from './HelpModal'
 import HistoryModal from './HistoryModal'
 import { useFavoriteCollectionTitle } from './FavoriteCollections'
-import { EditIcon, HelpCircleIcon, HistoryIcon, InstallIcon, SettingsIcon } from './icons'
+import { EditIcon, HelpCircleIcon, HistoryIcon, InstallIcon, KeyIcon, SettingsIcon } from './icons'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -86,6 +86,9 @@ export default function Header() {
   const installTooltip = useTooltip()
   const helpTooltip = useTooltip()
   const settingsTooltip = useTooltip()
+  const apiKeyTooltip = useTooltip()
+  const settings = useStore((s) => s.settings)
+  const openApiKeyPrompt = useStore((s) => s.openApiKeyPrompt)
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -288,6 +291,24 @@ export default function Header() {
               </button>
               <ViewportTooltip visible={helpTooltip.visible} className="whitespace-nowrap">
                 操作指南
+              </ViewportTooltip>
+            </div>
+            <div
+              className="relative"
+              {...apiKeyTooltip.handlers}
+            >
+              <button
+                onClick={() => {
+                  dismissAllTooltips()
+                  openApiKeyPrompt(getAllApiKeyPromptProfileIds(settings), { source: 'startup' })
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                aria-label="更换 API Key"
+              >
+                <KeyIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+              <ViewportTooltip visible={apiKeyTooltip.visible} className="whitespace-nowrap">
+                更换 API Key
               </ViewportTooltip>
             </div>
             <div

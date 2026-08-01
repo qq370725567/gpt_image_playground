@@ -65,7 +65,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const result = await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -110,7 +110,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const result = await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -144,7 +144,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'edit' }] }],
@@ -170,7 +170,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: { ...DEFAULT_PARAMS, size: '1024x1024' },
       input: 'prompt',
@@ -199,7 +199,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const result = await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -236,7 +236,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     await expect(callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -268,7 +268,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const title = await callAgentConversationTitleApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       prompt: '帮我生成一张橘猫头像，要赛博朋克风格',
     })
@@ -349,7 +349,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -401,7 +401,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const result = await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: "user", content: [{ type: "input_text", text: "hi" }] }],

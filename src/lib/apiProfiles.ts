@@ -27,12 +27,13 @@ const SHOW_DEFAULT_CONFIG_ONLY = readRuntimeEnv(import.meta.env.VITE_SHOW_DEFAUL
 const DEFAULT_API_URL_PATCH = isImportableConfigUrl(RAW_DEFAULT_API_URL)
   ? null
   : parseDefaultApiUrl(RAW_DEFAULT_API_URL || (DOCKER_DEPLOYMENT && DEFAULT_OPENAI_API_PROXY ? '' : OPENAI_DEFAULT_BASE_URL))
-const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
+export const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
 export const DEFAULT_IMAGES_MODEL = 'gpt-image-2'
-export const DEFAULT_RESPONSES_MODEL = 'gpt-5.6-sol'
+export const DEFAULT_RESPONSES_MODEL = 'openai/gpt-5.6-sol'
 export const DEFAULT_FAL_BASE_URL = 'https://fal.run'
 export const DEFAULT_FAL_MODEL = 'openai/gpt-image-2'
 export const DEFAULT_OPENAI_PROFILE_ID = 'default-openai'
+export const DEFAULT_TEXT_PROFILE_ID = 'default-text'
 export const DEFAULT_API_TIMEOUT = 600
 
 const BUILT_IN_PROVIDER_IDS = new Set<ApiProvider>(['openai', 'fal'])
@@ -350,6 +351,23 @@ export function createDefaultFalProfile(overrides: Partial<ApiProfile> = {}): Ap
   }
 }
 
+const DEFAULT_IMAGE_PROFILE = createDefaultOpenAIProfile({
+  name: DEFAULT_API_URL_PATCH?.name ?? '图像模型',
+  responseFormatB64Json: true,
+})
+const DEFAULT_TEXT_PROFILE = createDefaultOpenAIProfile({
+  id: DEFAULT_TEXT_PROFILE_ID,
+  name: '文本模型',
+  baseUrl: DEFAULT_IMAGE_PROFILE.baseUrl,
+  apiKey: '',
+  model: DEFAULT_RESPONSES_MODEL,
+  apiMode: 'responses',
+  codexCli: false,
+  apiProxy: DEFAULT_IMAGE_PROFILE.apiProxy,
+  responseFormatB64Json: undefined,
+  streamImages: true,
+})
+
 export function switchApiProfileProvider(profile: ApiProfile, provider: ApiProvider, customProvider?: CustomProviderDefinition): ApiProfile {
   const providerDrafts = {
     ...profile.providerDrafts,
@@ -505,6 +523,17 @@ function validateImportedProfileRecord(input: unknown) {
   }
 }
 
+function syncDefaultTextProfileApiKey(profiles: ApiProfile[]): ApiProfile[] {
+  const imageProfile = profiles.find((profile) => profile.id === DEFAULT_OPENAI_PROFILE_ID)
+  const textProfile = profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)
+  if (!imageProfile?.apiKey.trim() || !textProfile || textProfile.apiKey.trim()) return profiles
+
+  return profiles.map((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID
+    ? { ...profile, apiKey: imageProfile.apiKey }
+    : profile,
+  )
+}
+
 export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSettings {
   const record = input && typeof input === 'object' ? input as Record<string, unknown> : {}
   const customProviders = normalizeCustomProviderDefinitions(record.customProviders)
@@ -522,9 +551,9 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
     streamImages: typeof record.streamImages === 'boolean' ? record.streamImages : undefined,
     streamPartialImages: normalizeStreamPartialImages(record.streamPartialImages),
   })
-  const profiles = Array.isArray(record.profiles) && record.profiles.length
+  const profiles = syncDefaultTextProfileApiKey(Array.isArray(record.profiles) && record.profiles.length
     ? record.profiles.map((profile) => normalizeApiProfile(profile, undefined, customProviderIds))
-    : [legacyProfile]
+    : [legacyProfile])
   const activeProfileId = typeof record.activeProfileId === 'string' && profiles.some((p) => p.id === record.activeProfileId)
     ? record.activeProfileId
     : profiles[0].id
@@ -704,10 +733,39 @@ function isDefaultOpenAIProfile(profile: ApiProfile): boolean {
 }
 
 function hasOnlyDefaultProfiles(settings: AppSettings): boolean {
-  return settings.customProviders.length === 0 &&
-    settings.profiles.length === 1 &&
-    settings.activeProfileId === DEFAULT_OPENAI_PROFILE_ID &&
-    isDefaultOpenAIProfile(settings.profiles[0])
+  if (settings.customProviders.length !== 0 || settings.activeProfileId !== DEFAULT_OPENAI_PROFILE_ID) return false
+  if (settings.profiles.length === 1) return isDefaultOpenAIProfile(settings.profiles[0])
+  if (settings.profiles.length !== 2) return false
+
+  const imageProfile = settings.profiles.find((profile) => profile.id === DEFAULT_OPENAI_PROFILE_ID)
+  const textProfile = settings.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)
+  return Boolean(imageProfile && textProfile &&
+    imageProfile.name === DEFAULT_IMAGE_PROFILE.name &&
+    imageProfile.provider === DEFAULT_IMAGE_PROFILE.provider &&
+    imageProfile.baseUrl === DEFAULT_IMAGE_PROFILE.baseUrl &&
+    imageProfile.apiKey === DEFAULT_IMAGE_PROFILE.apiKey &&
+    imageProfile.model === DEFAULT_IMAGE_PROFILE.model &&
+    imageProfile.timeout === DEFAULT_IMAGE_PROFILE.timeout &&
+    imageProfile.apiMode === DEFAULT_IMAGE_PROFILE.apiMode &&
+    imageProfile.reasoningEffort === DEFAULT_IMAGE_PROFILE.reasoningEffort &&
+    imageProfile.codexCli === DEFAULT_IMAGE_PROFILE.codexCli &&
+    imageProfile.apiProxy === DEFAULT_IMAGE_PROFILE.apiProxy &&
+    imageProfile.responseFormatB64Json === DEFAULT_IMAGE_PROFILE.responseFormatB64Json &&
+    imageProfile.streamImages === DEFAULT_IMAGE_PROFILE.streamImages &&
+    imageProfile.streamPartialImages === DEFAULT_IMAGE_PROFILE.streamPartialImages &&
+    textProfile.name === DEFAULT_TEXT_PROFILE.name &&
+    textProfile.provider === DEFAULT_TEXT_PROFILE.provider &&
+    textProfile.baseUrl === DEFAULT_TEXT_PROFILE.baseUrl &&
+    textProfile.apiKey === imageProfile.apiKey &&
+    textProfile.model === DEFAULT_TEXT_PROFILE.model &&
+    textProfile.timeout === DEFAULT_TEXT_PROFILE.timeout &&
+    textProfile.apiMode === DEFAULT_TEXT_PROFILE.apiMode &&
+    textProfile.reasoningEffort === DEFAULT_TEXT_PROFILE.reasoningEffort &&
+    textProfile.codexCli === DEFAULT_TEXT_PROFILE.codexCli &&
+    textProfile.apiProxy === DEFAULT_TEXT_PROFILE.apiProxy &&
+    textProfile.responseFormatB64Json === DEFAULT_TEXT_PROFILE.responseFormatB64Json &&
+    textProfile.streamImages === DEFAULT_TEXT_PROFILE.streamImages &&
+    textProfile.streamPartialImages === DEFAULT_TEXT_PROFILE.streamPartialImages)
 }
 
 function createImportedProfileId(provider: ApiProvider, usedIds: Set<string>): string {
@@ -850,15 +908,15 @@ export function mergeImportedSettings(currentSettings: Partial<AppSettings> | un
 }
 
 export const DEFAULT_SETTINGS: AppSettings = normalizeSettings({
-  baseUrl: DEFAULT_BASE_URL,
-  apiKey: DEFAULT_API_URL_PATCH?.apiKey ?? '',
-  model: DEFAULT_API_URL_PATCH?.model ?? DEFAULT_IMAGES_MODEL,
-  timeout: DEFAULT_API_TIMEOUT,
-  apiMode: DEFAULT_API_URL_PATCH?.apiMode ?? 'images',
-  codexCli: DEFAULT_API_URL_PATCH?.codexCli ?? false,
-  apiProxy: DEFAULT_OPENAI_API_PROXY,
-  streamImages: DEFAULT_API_URL_PATCH?.streamImages ?? getDefaultStreamImages('openai', DEFAULT_API_URL_PATCH?.apiMode ?? 'images'),
-  streamPartialImages: DEFAULT_API_URL_PATCH?.streamPartialImages ?? DEFAULT_STREAM_PARTIAL_IMAGES,
+  baseUrl: DEFAULT_IMAGE_PROFILE.baseUrl,
+  apiKey: DEFAULT_IMAGE_PROFILE.apiKey,
+  model: DEFAULT_IMAGE_PROFILE.model,
+  timeout: DEFAULT_IMAGE_PROFILE.timeout,
+  apiMode: DEFAULT_IMAGE_PROFILE.apiMode,
+  codexCli: DEFAULT_IMAGE_PROFILE.codexCli,
+  apiProxy: DEFAULT_IMAGE_PROFILE.apiProxy,
+  streamImages: DEFAULT_IMAGE_PROFILE.streamImages,
+  streamPartialImages: DEFAULT_IMAGE_PROFILE.streamPartialImages,
   customProviders: [],
   clearInputAfterSubmit: false,
   persistInputOnRestart: true,
@@ -866,13 +924,15 @@ export const DEFAULT_SETTINGS: AppSettings = normalizeSettings({
   alwaysShowRetryButton: false,
   allowPromptRewrite: false,
   taskCompletionNotification: false,
-  enterSubmit: false,
+  enterSubmit: true,
   zipDownloadRoutes: DEFAULT_ZIP_DOWNLOAD_ROUTES,
   agentScrollToBottomAfterSubmit: true,
   agentMaxToolRounds: DEFAULT_AGENT_MAX_TOOL_ROUNDS,
   agentWebSearch: false,
   agentMathFormattingPrompt: true,
-  agentApiConfigMode: 'off',
-  agentTextProfileId: null,
-  agentImageProfileId: null,
+  agentApiConfigMode: 'hybrid',
+  agentTextProfileId: DEFAULT_TEXT_PROFILE_ID,
+  agentImageProfileId: DEFAULT_OPENAI_PROFILE_ID,
+  profiles: [DEFAULT_IMAGE_PROFILE, DEFAULT_TEXT_PROFILE],
+  activeProfileId: DEFAULT_OPENAI_PROFILE_ID,
 })

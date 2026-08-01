@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
-import { initStore } from './store'
-import { useStore } from './store'
+import { useEffect, useRef, useState } from 'react'
+import { getApiKeyPromptProfileIds, initStore, useStore } from './store'
 import { activateFirstImportedProfile, buildSettingsFromUrlParams, clearUrlSettingParams, hasUrlSettingParams } from './lib/urlSettings'
 import { isDefaultConfigOnlyEnabled, mergeImportedSettings } from './lib/apiProfiles'
 import { getCustomProviderConfigUrl, loadCustomProviderSettingsFromUrl } from './lib/customProviderConfigUrl'
@@ -19,6 +18,7 @@ import Toast from './components/Toast'
 import MaskEditorModal from './components/MaskEditorModal'
 import ImageContextMenu from './components/ImageContextMenu'
 import SupportPromptModal from './components/SupportPromptModal'
+import ApiKeyPromptModal from './components/ApiKeyPromptModal'
 import { FavoriteCollectionPickerModal, FavoriteCollectionsView, ManageCollectionsModal } from './components/FavoriteCollections'
 import { useGlobalClickSuppression } from './lib/clickSuppression'
 
@@ -26,13 +26,25 @@ let customProviderConfigUrlImportStarted = false
 
 export default function App() {
   const setSettings = useStore((s) => s.setSettings)
+  const settings = useStore((s) => s.settings)
   const appMode = useStore((s) => s.appMode)
+  const showSettings = useStore((s) => s.showSettings)
+  const openApiKeyPrompt = useStore((s) => s.openApiKeyPrompt)
+  const apiKeyPrompt = useStore((s) => s.apiKeyPrompt)
+  const apiKeyPromptDeferred = useStore((s) => s.apiKeyPromptDeferred)
+  const clearDeferredApiKeyPrompt = useStore((s) => s.clearDeferredApiKeyPrompt)
   const filterFavorite = useStore((s) => s.filterFavorite)
   const activeFavoriteCollectionId = useStore((s) => s.activeFavoriteCollectionId)
+  const [appReady, setAppReady] = useState(false)
+  const initializationStartedRef = useRef(false)
+  const startupApiKeyCheckRef = useRef(false)
   useDockerApiUrlMigrationNotice()
   useGlobalClickSuppression()
 
   useEffect(() => {
+    if (initializationStartedRef.current) return
+    initializationStartedRef.current = true
+
     const searchParams = new URLSearchParams(window.location.search)
     const customProviderConfigUrl = getCustomProviderConfigUrl()
     const defaultConfigOnly = isDefaultConfigOnlyEnabled()
@@ -52,49 +64,83 @@ export default function App() {
       window.history.replaceState(null, '', nextUrl)
     }
 
-    if (customProviderConfigUrl && defaultConfigOnly && !customProviderConfigUrlImportStarted) {
-      customProviderConfigUrlImportStarted = true
-      void loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
-        .then((importedSettings) => {
-          const state = useStore.getState()
-          const baseSettings = importedSettings
-            ? activateFirstImportedProfile(mergeImportedSettings(state.settings, importedSettings), importedSettings)
-            : state.settings
-          state.setSettings(applyUrlSettings(baseSettings))
-          clearAppliedUrlSettings()
-        })
-        .catch((error) => {
-          console.warn('Failed to import custom provider config URL:', error)
-          const state = useStore.getState()
-          state.setSettings(applyUrlSettings(state.settings))
-          clearAppliedUrlSettings()
-        })
+    const initialize = async () => {
+      let configImportPromise: Promise<void> = Promise.resolve()
 
-      initStore()
+      if (customProviderConfigUrl && defaultConfigOnly) {
+        if (!customProviderConfigUrlImportStarted) {
+          customProviderConfigUrlImportStarted = true
+          configImportPromise = loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
+            .then((importedSettings) => {
+              const state = useStore.getState()
+              const baseSettings = importedSettings
+                ? activateFirstImportedProfile(mergeImportedSettings(state.settings, importedSettings), importedSettings)
+                : state.settings
+              state.setSettings(applyUrlSettings(baseSettings))
+              clearAppliedUrlSettings()
+            })
+            .catch((error) => {
+              console.warn('Failed to import custom provider config URL:', error)
+              const state = useStore.getState()
+              state.setSettings(applyUrlSettings(state.settings))
+              clearAppliedUrlSettings()
+            })
+        }
+      } else {
+        const nextSettings = buildSettingsFromUrlParams(useStore.getState().settings, searchParams)
+        setSettings(nextSettings)
+        clearAppliedUrlSettings()
+
+        if (customProviderConfigUrl && !customProviderConfigUrlImportStarted) {
+          customProviderConfigUrlImportStarted = true
+          configImportPromise = loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
+            .then((importedSettings) => {
+              if (!importedSettings) return
+              const state = useStore.getState()
+              state.setSettings(mergeImportedSettings(state.settings, importedSettings))
+            })
+            .catch((error) => {
+              console.warn('Failed to import custom provider config URL:', error)
+            })
+        }
+      }
+
+      const results = await Promise.allSettled([initStore(), configImportPromise])
+      const initResult = results[0]
+      if (initResult.status === 'rejected') {
+        console.warn('Failed to initialize local data:', initResult.reason)
+      }
+      setAppReady(true)
+    }
+
+    void initialize()
+  }, [setSettings])
+
+  useEffect(() => {
+    if (!appReady || startupApiKeyCheckRef.current || apiKeyPrompt || showSettings) return
+    startupApiKeyCheckRef.current = true
+
+    const profileIds = getApiKeyPromptProfileIds(settings, appMode)
+    if (profileIds.some((id) => !settings.profiles.find((profile) => profile.id === id)?.apiKey.trim())) {
+      openApiKeyPrompt(profileIds, { source: 'startup' })
+    }
+  }, [appMode, apiKeyPrompt, appReady, openApiKeyPrompt, settings, showSettings])
+
+  useEffect(() => {
+    if (showSettings || apiKeyPrompt || !apiKeyPromptDeferred) return
+
+    const profileIds = apiKeyPromptDeferred.profileIds
+    const hasMissingApiKey = profileIds.some((id) => !settings.profiles.find((profile) => profile.id === id)?.apiKey.trim())
+    if (hasMissingApiKey) {
+      openApiKeyPrompt(profileIds, {
+        source: apiKeyPromptDeferred.source,
+        retry: apiKeyPromptDeferred.retry,
+      })
       return
     }
 
-    const nextSettings = buildSettingsFromUrlParams(useStore.getState().settings, searchParams)
-
-    setSettings(nextSettings)
-
-    clearAppliedUrlSettings()
-
-    if (customProviderConfigUrl && !customProviderConfigUrlImportStarted) {
-      customProviderConfigUrlImportStarted = true
-      void loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
-        .then((importedSettings) => {
-          if (!importedSettings) return
-          const state = useStore.getState()
-          state.setSettings(mergeImportedSettings(state.settings, importedSettings))
-        })
-        .catch((error) => {
-          console.warn('Failed to import custom provider config URL:', error)
-        })
-    }
-
-    initStore()
-  }, [setSettings])
+    clearDeferredApiKeyPrompt()
+  }, [apiKeyPrompt, apiKeyPromptDeferred, clearDeferredApiKeyPrompt, openApiKeyPrompt, settings, showSettings])
 
   useEffect(() => {
     const preventPageImageDrag = (e: DragEvent) => {
@@ -125,6 +171,7 @@ export default function App() {
       <Lightbox />
       <SettingsModal />
       <ConfirmDialog />
+      <ApiKeyPromptModal />
       <SupportPromptModal />
       <FavoriteCollectionPickerModal />
       <ManageCollectionsModal />

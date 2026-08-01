@@ -4,6 +4,8 @@ import {
   DEFAULT_FAL_MODEL,
   DEFAULT_IMAGES_MODEL,
   DEFAULT_OPENAI_PROFILE_ID,
+  DEFAULT_RESPONSES_MODEL,
+  DEFAULT_TEXT_PROFILE_ID,
   DEFAULT_SETTINGS,
   createDefaultOpenAIProfile,
   createDefaultFalProfile,
@@ -78,6 +80,66 @@ describe('default API URL env', () => {
 
     expect(DEFAULT_SETTINGS.baseUrl).toBe('')
     expect(DEFAULT_SETTINGS.profiles[0].baseUrl).toBe('')
+  })
+})
+
+describe('default profiles', () => {
+  it('creates image and text profiles with the requested defaults', () => {
+    expect(DEFAULT_SETTINGS.profiles).toHaveLength(2)
+    expect(DEFAULT_SETTINGS.profiles[0]).toMatchObject({
+      id: DEFAULT_OPENAI_PROFILE_ID,
+      name: '图像模型',
+      model: DEFAULT_IMAGES_MODEL,
+      apiMode: 'images',
+      responseFormatB64Json: true,
+      streamImages: false,
+    })
+    expect(DEFAULT_SETTINGS.profiles[1]).toMatchObject({
+      id: DEFAULT_TEXT_PROFILE_ID,
+      name: '文本模型',
+      model: DEFAULT_RESPONSES_MODEL,
+      apiMode: 'responses',
+      responseFormatB64Json: undefined,
+      streamImages: true,
+    })
+    expect(DEFAULT_SETTINGS.activeProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
+    expect(DEFAULT_SETTINGS.enterSubmit).toBe(true)
+    expect(DEFAULT_SETTINGS.agentApiConfigMode).toBe('hybrid')
+    expect(DEFAULT_SETTINGS.agentTextProfileId).toBe(DEFAULT_TEXT_PROFILE_ID)
+    expect(DEFAULT_SETTINGS.agentImageProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
+  })
+
+  it('syncs the image profile key to an empty default text profile key', () => {
+    const imageProfile = createDefaultOpenAIProfile({ apiKey: 'image-key' })
+    const textProfile = createDefaultOpenAIProfile({
+      id: DEFAULT_TEXT_PROFILE_ID,
+      name: '文本模型',
+      apiKey: '',
+      model: DEFAULT_RESPONSES_MODEL,
+      apiMode: 'responses',
+      streamImages: true,
+    })
+
+    const normalized = normalizeSettings({ profiles: [imageProfile, textProfile] })
+
+    expect(normalized.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('image-key')
+  })
+
+  it('keeps an independently configured text profile key', () => {
+    const normalized = normalizeSettings({
+      profiles: [
+        createDefaultOpenAIProfile({ apiKey: 'image-key' }),
+        createDefaultOpenAIProfile({
+          id: DEFAULT_TEXT_PROFILE_ID,
+          apiKey: 'text-key',
+          model: DEFAULT_RESPONSES_MODEL,
+          apiMode: 'responses',
+          streamImages: true,
+        }),
+      ],
+    })
+
+    expect(normalized.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('text-key')
   })
 })
 
@@ -376,7 +438,7 @@ describe('mergeImportedSettings', () => {
     })
 
     expect(merged.customProviders.map((provider) => provider.id)).toEqual(['custom-existing', 'custom-imported'])
-    expect(merged.profiles).toHaveLength(2)
+    expect(merged.profiles).toHaveLength(3)
   })
 
   it('appends imported custom providers and keeps imported custom profile references', () => {

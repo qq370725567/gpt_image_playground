@@ -19,6 +19,15 @@ async function importDefaultConfigOnlyUrlSettings() {
   return import('./urlSettings')
 }
 
+// 返回同一模块实例（含 stub 环境下的 apiProfiles），避免 DEFAULT_SETTINGS 与
+// DEFAULT_BASE_URL 来自不同实例导致比较不一致
+async function importDefaultConfigOnlyModules() {
+  vi.resetModules()
+  vi.stubEnv('VITE_SHOW_DEFAULT_CONFIG_ONLY', 'true')
+  vi.stubEnv('VITE_DEFAULT_API_URL', 'https://default.example.com/v1')
+  return Promise.all([import('./urlSettings'), import('./apiProfiles')])
+}
+
 describe('URL settings params', () => {
   it('creates and activates a new OpenAI profile for legacy URL params', () => {
     const current = normalizeSettings(DEFAULT_SETTINGS)
@@ -27,7 +36,7 @@ describe('URL settings params', () => {
       ...buildSettingsFromUrlParams(current, new URLSearchParams('apiUrl=https://api.example.com/v1&apiKey=test-key')),
     })
 
-    expect(next.profiles).toHaveLength(2)
+    expect(next.profiles).toHaveLength(3)
     expect(next.activeProfileId).not.toBe(current.activeProfileId)
     expect(next.profiles.find((profile) => profile.id === next.activeProfileId)).toMatchObject({
       name: 'URL 参数配置',
@@ -376,7 +385,7 @@ describe('URL settings params', () => {
       ...buildSettingsFromUrlParams(current, new URLSearchParams('apiUrl=https://api.example.com/v1&apiKey=test-key&model=custom-model&profileName=导入配置&apiMode=responses')),
     })
 
-    expect(next.profiles).toHaveLength(1)
+    expect(next.profiles).toHaveLength(2)
     expect(next.customProviders).toHaveLength(0)
     expect(next.activeProfileId).toBe(current.activeProfileId)
     expect(next.profiles[0]).toMatchObject({
@@ -426,7 +435,7 @@ describe('URL settings params', () => {
       ...buildSettingsFromUrlParams(current, params),
     })
 
-    expect(next.profiles).toHaveLength(1)
+    expect(next.profiles).toHaveLength(2)
     expect(next.customProviders).toHaveLength(0)
     expect(next.activeProfileId).toBe(current.activeProfileId)
     expect(next.profiles[0]).toMatchObject({
@@ -484,7 +493,7 @@ describe('URL settings params', () => {
       ...buildSettingsFromUrlParams(current, params),
     })
 
-    expect(next.profiles).toHaveLength(1)
+    expect(next.profiles).toHaveLength(2)
     expect(next.customProviders).toHaveLength(0)
     expect(next.activeProfileId).toBe(current.activeProfileId)
     expect(next.profiles[0]).toMatchObject({
@@ -578,5 +587,85 @@ describe('URL settings params', () => {
       timeout: 240,
       apiMode: 'images',
     })
+  })
+
+  it('replaces default image and text profile URLs with src_host (sub2api 菜单跳转)', () => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('src_host=https://sub2.example.com&user_id=1&token=abc')),
+    })
+
+    expect(next.profiles).toHaveLength(2)
+    expect(next.activeProfileId).toBe(current.activeProfileId)
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')).toMatchObject({
+      baseUrl: 'https://sub2.example.com/v1',
+    })
+    expect(next.profiles.find((profile) => profile.id === 'default-text')).toMatchObject({
+      baseUrl: 'https://sub2.example.com/v1',
+    })
+  })
+
+  it('does not duplicate the /v1 suffix when src_host already carries it', () => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('src_host=https://sub2.example.com/v1&user_id=1&token=abc')),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')).toMatchObject({
+      baseUrl: 'https://sub2.example.com/v1',
+    })
+  })
+
+  it('keeps a customized profile URL and only replaces the still-default text profile', () => {
+    const current = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      profiles: DEFAULT_SETTINGS.profiles.map((profile) =>
+        profile.id === 'default-openai' ? { ...profile, baseUrl: 'https://custom.example.com/v1' } : profile,
+      ),
+    })
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('src_host=https://sub2.example.com&user_id=1&token=abc')),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')?.baseUrl).toBe('https://custom.example.com/v1')
+    expect(next.profiles.find((profile) => profile.id === 'default-text')?.baseUrl).toBe('https://sub2.example.com/v1')
+  })
+
+  it('replaces default image and text profile URLs with src_host when only default config is shown', async () => {
+    const [{ buildSettingsFromUrlParams }, { DEFAULT_SETTINGS, normalizeSettings }] = await importDefaultConfigOnlyModules()
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('src_host=https://sub2.example.com&user_id=1&token=abc')),
+    })
+
+    expect(next.profiles).toHaveLength(2)
+    expect(next.activeProfileId).toBe(current.activeProfileId)
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')).toMatchObject({
+      baseUrl: 'https://sub2.example.com/v1',
+    })
+    expect(next.profiles.find((profile) => profile.id === 'default-text')).toMatchObject({
+      baseUrl: 'https://sub2.example.com/v1',
+    })
+  })
+
+  it('keeps a customized active profile URL and only replaces the default text profile when only default config is shown', async () => {
+    const [{ buildSettingsFromUrlParams }, { DEFAULT_SETTINGS, normalizeSettings }] = await importDefaultConfigOnlyModules()
+    const current = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      profiles: DEFAULT_SETTINGS.profiles.map((profile) =>
+        profile.id === 'default-openai' ? { ...profile, baseUrl: 'https://custom.example.com/v1' } : profile,
+      ),
+    })
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('src_host=https://sub2.example.com&user_id=1&token=abc')),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')?.baseUrl).toBe('https://custom.example.com/v1')
+    expect(next.profiles.find((profile) => profile.id === 'default-text')?.baseUrl).toBe('https://sub2.example.com/v1')
   })
 })

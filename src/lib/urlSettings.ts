@@ -2,8 +2,11 @@ import type { ApiMode, AppSettings } from '../types'
 import { normalizeBaseUrl } from './devProxy'
 import {
   createDefaultOpenAIProfile,
+  DEFAULT_BASE_URL,
   DEFAULT_IMAGES_MODEL,
+  DEFAULT_OPENAI_PROFILE_ID,
   DEFAULT_RESPONSES_MODEL,
+  DEFAULT_TEXT_PROFILE_ID,
   findEquivalentApiProfile,
   isDefaultConfigOnlyEnabled,
   mergeImportedSettings,
@@ -78,6 +81,39 @@ export function activateFirstImportedProfile(settings: AppSettings, importedSett
     : settings
 }
 
+/** src_host 是中转 API 地址（可能不带路径），统一补上 /v1 */
+function normalizeSrcHostBaseUrl(srcHost: string): string {
+  const normalized = normalizeBaseUrl(srcHost)
+  if (!normalized) return ''
+  try {
+    const pathSegments = new URL(normalized).pathname.split('/').filter(Boolean)
+    if (pathSegments[pathSegments.length - 1]?.toLowerCase() === 'v1') return normalized
+    return `${normalized.replace(/\/+$/, '')}/v1`
+  } catch {
+    return normalized
+  }
+}
+
+/** sub2api 菜单跳转（src_host 为中转地址）：仅当 profile 仍是默认 OpenAI 地址时才替换为 src_host */
+function applySrcHostBaseUrl(settings: AppSettings, srcHostParam: string | null): AppSettings {
+  const srcHostUrl = srcHostParam?.trim() ? normalizeSrcHostBaseUrl(srcHostParam.trim()) : ''
+  if (!srcHostUrl) return settings
+
+  const targetIds = new Set([
+    settings.activeProfileId,
+    settings.agentImageProfileId ?? DEFAULT_OPENAI_PROFILE_ID,
+    settings.agentTextProfileId ?? DEFAULT_TEXT_PROFILE_ID,
+  ])
+  let changed = false
+  const profiles = settings.profiles.map((profile) => {
+    if (!targetIds.has(profile.id)) return profile
+    if (profile.baseUrl.trim() && normalizeBaseUrl(profile.baseUrl) !== DEFAULT_BASE_URL) return profile
+    changed = true
+    return { ...profile, baseUrl: srcHostUrl }
+  })
+  return changed ? { ...settings, profiles } : settings
+}
+
 /**
  * 仅展示默认配置模式：从 URL 参数中提取可覆盖的字段，patch 到当前活跃配置上。
  * 不新建配置、不导入自定义服务商、不切换 provider。
@@ -124,6 +160,7 @@ function buildDefaultConfigOnlySettingsFromUrlParams(currentSettings: Partial<Ap
   const apiKeyParam = searchParams.get('apiKey')
   const modelParam = searchParams.get('model')
   const profileNameParam = searchParams.get('profileName')
+  const srcHostParam = searchParams.get('src_host')
   if (profileNameParam?.trim()) patch.name = profileNameParam.trim()
   if (apiUrlParam !== null) patch.baseUrl = normalizeBaseUrl(apiUrlParam.trim())
   if (apiKeyParam !== null) patch.apiKey = apiKeyParam.trim()
@@ -141,13 +178,24 @@ function buildDefaultConfigOnlySettingsFromUrlParams(currentSettings: Partial<Ap
     if (streamPartialImagesParam !== null) patch.streamPartialImages = normalizeStreamPartialImages(streamPartialImagesParam)
   }
 
-  if (Object.keys(patch).length === 0) return {}
+  // sub2api 菜单跳转（src_host 为中转地址）：仅当当前还是默认 OpenAI 地址时才替换
+  const srcHostUrl = srcHostParam?.trim() ? normalizeSrcHostBaseUrl(srcHostParam.trim()) : ''
+  if (srcHostUrl && !patch.baseUrl && (!activeProfile.baseUrl.trim() || normalizeBaseUrl(activeProfile.baseUrl) === DEFAULT_BASE_URL)) {
+    patch.baseUrl = srcHostUrl
+  }
 
+  if (Object.keys(patch).length === 0 && !srcHostUrl) return {}
+
+  const textProfileId = settings.agentTextProfileId ?? DEFAULT_TEXT_PROFILE_ID
   return normalizeSettings({
     ...settings,
-    profiles: settings.profiles.map((profile) =>
-      profile.id === activeProfile.id ? { ...profile, ...patch, provider: profile.provider } : profile,
-    ),
+    profiles: settings.profiles.map((profile) => {
+      if (profile.id === activeProfile.id) return { ...profile, ...patch, provider: profile.provider }
+      if (srcHostUrl && profile.id === textProfileId && (!profile.baseUrl.trim() || normalizeBaseUrl(profile.baseUrl) === DEFAULT_BASE_URL)) {
+        return { ...profile, baseUrl: srcHostUrl }
+      }
+      return profile
+    }),
   })
 }
 
@@ -171,6 +219,7 @@ export function buildSettingsFromUrlParams(currentSettings: Partial<AppSettings>
   const reasoningEffortParam = searchParams.get('reasoningEffort')
   const profileNameParam = searchParams.get('profileName')
   const profileName = profileNameParam?.trim() ?? ''
+  const srcHostParam = searchParams.get('src_host')
   const streamImagesParam = searchParams.get('streamImages')
   const streamPartialImagesParam = searchParams.get('streamPartialImages')
   const apiMode: ApiMode | undefined = apiModeParam === 'images' || apiModeParam === 'responses' ? apiModeParam : undefined
@@ -179,6 +228,7 @@ export function buildSettingsFromUrlParams(currentSettings: Partial<AppSettings>
   const settings = importedSettings == null
     ? normalizeSettings(currentSettings)
     : activateFirstImportedProfile(mergeImportedSettings(currentSettings, importedSettings), importedSettings)
+  const srcHostSettings = applySrcHostBaseUrl(settings, srcHostParam)
 
   if (hasLegacyOpenAIParams) {
     const profileApiMode = apiMode ?? 'images'
@@ -212,5 +262,7 @@ export function buildSettingsFromUrlParams(currentSettings: Partial<AppSettings>
     })
   }
 
-  return importedSettings == null ? {} : settings
+  return importedSettings == null
+    ? srcHostSettings === settings ? {} : srcHostSettings
+    : srcHostSettings
 }

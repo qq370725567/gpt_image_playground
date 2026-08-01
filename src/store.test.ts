@@ -134,7 +134,7 @@ import { callImageApi } from './lib/api'
 import { callAgentResponsesApi, callBatchImageSingle } from './lib/agentApi'
 import { getFalQueuedImageResult } from './lib/falAiImageApi'
 import { removeKeyedBackgroundFromDataUrl } from './lib/transparentImage'
-import { clearFailedTasks, deleteFavoriteCollection, editOutputs, getErrorToastMessage, getPersistedState, getTaskApiProfile, importData, initStore, regenerateAgentAssistantMessage, removeMultipleTasks, removeTask, reuseConfig, stopAgentResponse, submitAgentMessage, submitTask, taskMatchesFilterStatus, taskMatchesSearchQuery, useStore } from './store'
+import { clearFailedTasks, deleteFavoriteCollection, editOutputs, getApiKeyPromptProfileIds, getErrorToastMessage, getPersistedState, getTaskApiProfile, importData, initStore, regenerateAgentAssistantMessage, removeMultipleTasks, removeTask, reuseConfig, stopAgentResponse, submitAgentMessage, submitTask, taskMatchesFilterStatus, taskMatchesSearchQuery, useStore } from './store'
 
 const commitTaskDeletionImplementation = vi.mocked(commitTaskDeletion).getMockImplementation()!
 const deleteDbImageImplementation = vi.mocked(deleteDbImage).getMockImplementation()!
@@ -184,6 +184,64 @@ function task(overrides: Partial<TaskRecord> = {}): TaskRecord {
     ...overrides,
   }
 }
+
+describe('API Key prompt state', () => {
+  beforeEach(() => {
+    useStore.setState({
+      settings: DEFAULT_SETTINGS,
+      appMode: 'gallery',
+      apiKeyPrompt: null,
+      apiKeyPromptDeferred: null,
+    })
+  })
+
+  it('targets the default image and text profiles in gallery mode', () => {
+    expect(getApiKeyPromptProfileIds(DEFAULT_SETTINGS, 'gallery')).toEqual(['default-openai', 'default-text'])
+  })
+
+  it('can defer a prompt while advanced settings is open', () => {
+    const state = useStore.getState()
+    state.openApiKeyPrompt(['default-openai'], { source: 'startup' })
+    state.deferApiKeyPrompt()
+
+    expect(useStore.getState().apiKeyPrompt).toBeNull()
+    expect(useStore.getState().apiKeyPromptDeferred).toMatchObject({
+      source: 'startup',
+      profileIds: ['default-openai'],
+    })
+  })
+
+  it('opens the simple prompt instead of settings when a gallery key is missing', async () => {
+    useStore.setState({ prompt: 'draw a house' })
+
+    await submitTask()
+
+    expect(useStore.getState().apiKeyPrompt).toMatchObject({
+      profileIds: ['default-openai', 'default-text'],
+      source: 'submit',
+      retry: { type: 'task' },
+    })
+    expect(useStore.getState().showSettings).toBe(false)
+  })
+
+  it('keeps other incomplete API fields on the full settings flow', async () => {
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        profiles: DEFAULT_SETTINGS.profiles.map((profile) => profile.id === 'default-openai'
+          ? { ...profile, baseUrl: '', apiKey: '' }
+          : profile,
+        ),
+      }),
+      prompt: 'draw a house',
+    })
+
+    await submitTask()
+
+    expect(useStore.getState().apiKeyPrompt).toBeNull()
+    expect(useStore.getState().showSettings).toBe(true)
+  })
+})
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -4467,6 +4525,7 @@ describe('agent batch reference resolution', () => {
         apiKey: 'test-key',
         apiMode: 'responses',
         model: DEFAULT_RESPONSES_MODEL,
+        agentApiConfigMode: 'off',
         profiles: [responsesProfile],
         activeProfileId: responsesProfile.id,
       }),
