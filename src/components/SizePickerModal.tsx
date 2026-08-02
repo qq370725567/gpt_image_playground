@@ -185,9 +185,9 @@ export default function SizePickerModal({ currentSize, onSelect, onClose, allowA
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-overlay-in" />
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-md rounded-3xl border border-white/50 bg-white/95 p-5 shadow-2xl ring-1 ring-black/5 animate-modal-in dark:border-white/[0.08] dark:bg-gray-900/95 dark:ring-white/10"
+        className="relative z-10 w-full max-w-md rounded-3xl border border-white/50 bg-white/95 p-4 shadow-2xl ring-1 ring-black/5 animate-modal-in dark:border-white/[0.08] dark:bg-gray-900/95 dark:ring-white/10"
       >
-        <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">设置图像尺寸</h3>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">当前：{currentSize || 'auto'}</p>
@@ -203,7 +203,7 @@ export default function SizePickerModal({ currentSize, onSelect, onClose, allowA
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex rounded-xl bg-gray-100/80 p-1 dark:bg-white/[0.04]">
             {allowAuto && (
               <button
@@ -227,7 +227,7 @@ export default function SizePickerModal({ currentSize, onSelect, onClose, allowA
             </button>
           </div>
 
-          <div className="h-[380px] max-h-[55vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10 pr-1 -mr-1 pb-2">
+          <div className="h-[300px] max-h-[55vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10 pr-1 -mr-1 pb-2">
             {mode === 'auto' && (
               <div className="flex h-full animate-fade-in items-center justify-center pt-8 pb-4 text-center">
                 <div>
@@ -421,7 +421,7 @@ export default function SizePickerModal({ currentSize, onSelect, onClose, allowA
           </div>
         </div>
 
-        <div className="mt-5 flex gap-2">
+        <div className="mt-4 flex gap-2">
           <button
             onClick={onClose}
             className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-200 dark:bg-white/[0.06] dark:text-gray-300 dark:hover:bg-white/[0.1]"
