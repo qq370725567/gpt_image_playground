@@ -197,6 +197,8 @@
 
 **仅展示默认配置**：设置 `VITE_SHOW_DEFAULT_CONFIG_ONLY=true` 后，如果已配置默认 API URL 或默认代理，前端会禁用“当前配置”和“服务商类型”的下拉切换，只允许使用默认配置和默认服务商类型。通过页面 URL 参数传入的配置只会覆盖当前配置字段，不会新建配置、切换服务商类型或导入自定义服务商；`VITE_DEFAULT_API_URL` 本身仍可使用配置 URL 来定义部署端默认服务商。
 
+**默认文本模型前缀**：设置 `VITE_DEFAULT_TEXT_MODEL_PREFIX=openai` 后，Agent 文本模型请求会自动带上 `openai/` 前缀（如 `openai/gpt-5.6-sol`）；不设置时发送裸模型名（如 `gpt-5.6-sol`）。
+
 **绑定自定义域名 (国内直连)**：Vercel 默认分配的 `.vercel.app` 域名在国内通常无法直接访问。如果你希望在国内直连访问，请在 Vercel 项目的 **Settings → Domains** 中绑定你自己的域名。
 
 **配置自动更新**：
@@ -246,6 +248,8 @@ $env:VITE_DEFAULT_API_URL="https://api.openai.com/v1"; npm run deploy:cf
 **导入自定义服务商配置**：`VITE_DEFAULT_API_URL` 除了填写普通 API 地址外，也支持直接填写 `.json` 配置 URL 或带 `settings` 参数的分享 URL。设为配置 URL 时，页面启动后会自动导入其中的自定义服务商和 API 配置。
 
 **仅展示默认配置**：构建前设置 `VITE_SHOW_DEFAULT_CONFIG_ONLY=true` 后，如果已配置默认 API URL 或默认代理，前端会禁用“当前配置”和“服务商类型”的下拉切换。通过页面 URL 参数传入的配置只会覆盖当前配置字段，不会新建配置、切换服务商类型或导入自定义服务商；`VITE_DEFAULT_API_URL` 本身仍可使用配置 URL 来定义部署端默认服务商。
+
+**默认文本模型前缀**：设置 `VITE_DEFAULT_TEXT_MODEL_PREFIX=openai` 后，Agent 文本模型请求会自动带上 `openai/` 前缀（如 `openai/gpt-5.6-sol`）；不设置时发送裸模型名（如 `gpt-5.6-sol`）。
 
 </details>
 
@@ -348,6 +352,8 @@ services:
 **导入自定义服务商配置**：`VITE_DEFAULT_API_URL` 除了填写普通 API 地址外，也支持直接填写 `.json` 配置 URL 或带 `settings` 参数的分享 URL。设为配置 URL 时，页面启动后会自动导入其中的自定义服务商和 API 配置。
 
 **仅展示默认配置**：在 `.env.local` 中加入 `VITE_SHOW_DEFAULT_CONFIG_ONLY=true` 后，如果已配置默认 API URL 或默认代理，前端会禁用“当前配置”和“服务商类型”的下拉切换。通过页面 URL 参数传入的配置只会覆盖当前配置字段，不会新建配置、切换服务商类型或导入自定义服务商；`VITE_DEFAULT_API_URL` 本身仍可使用配置 URL 来定义部署端默认服务商。
+
+**默认文本模型前缀**：设置 `VITE_DEFAULT_TEXT_MODEL_PREFIX=openai` 后，Agent 文本模型请求会自动带上 `openai/` 前缀（如 `openai/gpt-5.6-sol`）；不设置时发送裸模型名（如 `gpt-5.6-sol`）。
 
 ```bash
 npm install

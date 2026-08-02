@@ -85,6 +85,52 @@ describe('default API URL env', () => {
   })
 })
 
+describe('text model prefix env', () => {
+  it('prefixes text models when VITE_DEFAULT_TEXT_MODEL_PREFIX is set', async () => {
+    vi.resetModules()
+    vi.stubEnv('VITE_DEFAULT_TEXT_MODEL_PREFIX', 'openai')
+
+    const {
+      DEFAULT_RESPONSES_MODEL,
+      DEFAULT_SETTINGS,
+      DEFAULT_TEXT_PROFILE_ID,
+      createDefaultOpenAIProfile,
+      getEffectiveAgentTextProfile,
+      normalizeSettings,
+    } = await import('./apiProfiles')
+
+    // 存储的默认文本 profile 与实际发送的模型保持一致
+    expect(DEFAULT_RESPONSES_MODEL).toBe('openai/gpt-5.6-sol')
+    expect(DEFAULT_SETTINGS.profiles[1].model).toBe(DEFAULT_RESPONSES_MODEL)
+
+    const effective = getEffectiveAgentTextProfile(normalizeSettings({
+      agentApiConfigMode: 'hybrid',
+      profiles: [
+        createDefaultOpenAIProfile({ apiKey: 'image-key' }),
+        createDefaultOpenAIProfile({
+          id: DEFAULT_TEXT_PROFILE_ID,
+          apiKey: 'text-key',
+          model: DEFAULT_RESPONSES_MODEL,
+          apiMode: 'responses',
+          streamImages: true,
+        }),
+      ],
+    }))
+    expect(effective).not.toBeNull()
+    expect(effective!.model).toBe('openai/gpt-5.6-sol')
+  })
+
+  it('strips a trailing slash from the configured prefix', async () => {
+    vi.resetModules()
+    vi.stubEnv('VITE_DEFAULT_TEXT_MODEL_PREFIX', 'openai/')
+
+    const { DEFAULT_RESPONSES_MODEL, applyTextModelPrefix } = await import('./apiProfiles')
+
+    expect(DEFAULT_RESPONSES_MODEL).toBe('openai/gpt-5.6-sol')
+    expect(applyTextModelPrefix('gpt-5.6-terra')).toBe('openai/gpt-5.6-terra')
+  })
+})
+
 describe('default profiles', () => {
   it('creates image and text profiles with the requested defaults', () => {
     expect(DEFAULT_SETTINGS.profiles).toHaveLength(2)
@@ -180,17 +226,17 @@ describe('getEffectiveAgentTextProfile', () => {
     textModel,
   })
 
-  it('overrides the text profile model with the openai/ prefixed default', () => {
+  it('overrides the text profile model with the bare default', () => {
     const effective = getEffectiveAgentTextProfile(buildSettings())
     expect(effective).not.toBeNull()
     expect(effective!.id).toBe(DEFAULT_TEXT_PROFILE_ID)
-    expect(effective!.model).toBe('openai/gpt-5.6-sol')
+    expect(effective!.model).toBe(DEFAULT_TEXT_MODEL)
     expect(effective!.apiKey).toBe('text-key')
   })
 
-  it('uses the selected text model with the openai/ prefix', () => {
+  it('uses the selected text model without a prefix', () => {
     const effective = getEffectiveAgentTextProfile(buildSettings('gpt-5.6-sol'))
-    expect(effective!.model).toBe('openai/gpt-5.6-sol')
+    expect(effective!.model).toBe('gpt-5.6-sol')
   })
 
   it('does not mutate the underlying profile', () => {

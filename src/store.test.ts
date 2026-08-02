@@ -3807,7 +3807,7 @@ describe('agent text model selection', () => {
     })
   })
 
-  it('sends the default text model with the openai/ prefix', async () => {
+  it('sends the default text model without a prefix', async () => {
     vi.mocked(callAgentResponsesApi).mockResolvedValueOnce({
       text: '',
       images: [],
@@ -3818,10 +3818,10 @@ describe('agent text model selection', () => {
     await submitAgentMessage()
     await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
 
-    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-sol')
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('gpt-5.6-sol')
   })
 
-  it('sends the selected text model with the openai/ prefix', async () => {
+  it('sends the selected text model without a prefix', async () => {
     useStore.setState({
       settings: normalizeSettings({ ...useStore.getState().settings, textModel: 'gpt-5.6-terra' }),
     })
@@ -3835,7 +3835,7 @@ describe('agent text model selection', () => {
     await submitAgentMessage()
     await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
 
-    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('openai/gpt-5.6-terra')
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('gpt-5.6-terra')
   })
 })
 

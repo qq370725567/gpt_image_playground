@@ -24,12 +24,17 @@ const RAW_DEFAULT_API_URL = readRuntimeEnv(import.meta.env.VITE_DEFAULT_API_URL)
 const DEFAULT_OPENAI_API_PROXY = readRuntimeEnv(import.meta.env.VITE_API_PROXY_AVAILABLE) === 'true'
 const DOCKER_DEPLOYMENT = readRuntimeEnv(import.meta.env.VITE_DOCKER_DEPLOYMENT) === 'true'
 const SHOW_DEFAULT_CONFIG_ONLY = readRuntimeEnv(import.meta.env.VITE_SHOW_DEFAULT_CONFIG_ONLY) === 'true'
+const DEFAULT_TEXT_MODEL_PREFIX = readRuntimeEnv(import.meta.env.VITE_DEFAULT_TEXT_MODEL_PREFIX).replace(/\/+$/, '')
 const DEFAULT_API_URL_PATCH = isImportableConfigUrl(RAW_DEFAULT_API_URL)
   ? null
   : parseDefaultApiUrl(RAW_DEFAULT_API_URL || (DOCKER_DEPLOYMENT && DEFAULT_OPENAI_API_PROXY ? '' : OPENAI_DEFAULT_BASE_URL))
 export const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
 export const DEFAULT_IMAGES_MODEL = 'gpt-image-2'
-export const DEFAULT_RESPONSES_MODEL = 'openai/gpt-5.6-sol'
+/** 按 VITE_DEFAULT_TEXT_MODEL_PREFIX 为文本模型加前缀：配置了（如 openai）时返回 openai/<model>，未配置时返回裸模型名 */
+export function applyTextModelPrefix(model: string): string {
+  return DEFAULT_TEXT_MODEL_PREFIX ? `${DEFAULT_TEXT_MODEL_PREFIX}/${model}` : model
+}
+export const DEFAULT_RESPONSES_MODEL = applyTextModelPrefix('gpt-5.6-sol')
 export const TEXT_MODEL_VALUES = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'] as const
 export const DEFAULT_TEXT_MODEL = 'gpt-5.6-sol'
 export const DEFAULT_FAL_BASE_URL = 'https://fal.run'
@@ -611,11 +616,11 @@ export function getAgentTextApiProfile(settings: Partial<AppSettings> | unknown)
   return normalized.profiles.find((profile) => profile.id === normalized.agentTextProfileId) ?? null
 }
 
-/** 实际发送请求的文本模型 profile：在 agentTextProfile 基础上按 settings.textModel 覆盖 model（自动加 openai/ 前缀） */
+/** 实际发送请求的文本模型 profile：在 agentTextProfile 基础上按 settings.textModel 覆盖 model（默认发送裸模型名，配置了 VITE_DEFAULT_TEXT_MODEL_PREFIX 时自动加前缀） */
 export function getEffectiveAgentTextProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {
   const base = getAgentTextApiProfile(settings)
   if (!base) return null
-  return { ...base, model: `openai/${normalizeSettings(settings).textModel}` }
+  return { ...base, model: applyTextModelPrefix(normalizeSettings(settings).textModel) }
 }
 
 export function getAgentImageApiProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {
