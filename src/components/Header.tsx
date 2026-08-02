@@ -215,7 +215,7 @@ export default function Header() {
             </div>}
           </div>
           {appMode === 'agent' && activeConversation && (
-            <div className="absolute left-1/2 top-1/2 translate-x-[calc(-50%-75px)] -translate-y-1/2 hidden sm:flex max-w-[30%]">
+            <div className="absolute left-1/2 top-1/2 translate-x-[calc(-50%-55px)] -translate-y-1/2 hidden sm:flex max-w-[30%]">
               <button
                 type="button"
                 onClick={() => {
@@ -232,7 +232,7 @@ export default function Header() {
             </div>
           )}
           {showFavoriteCollectionTitle && (
-            <div className="absolute left-1/2 top-1/2 hidden max-w-[30%] translate-x-[calc(-50%-75px)] -translate-y-1/2 sm:flex">
+            <div className="absolute left-1/2 top-1/2 hidden max-w-[30%] translate-x-[calc(-50%-55px)] -translate-y-1/2 sm:flex">
               <div className="truncate rounded px-2 py-1 text-sm font-semibold text-gray-700 dark:text-gray-300" title={favoriteCollectionTitle}>
                 {favoriteCollectionTitle}
               </div>
@@ -254,7 +254,7 @@ export default function Header() {
               Agent
             </button>
           </div>
-          <div className="flex items-center gap-1 shrink-0 mr-[150px]">
+          <div className="flex items-center gap-1 shrink-0 mr-[110px]">
             {!isPwaInstalled && (
               <div
                 className="relative"
