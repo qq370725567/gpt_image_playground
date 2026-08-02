@@ -530,7 +530,8 @@ function validateImportedProfileRecord(input: unknown) {
   }
 }
 
-function syncDefaultTextProfileApiKey(profiles: ApiProfile[]): ApiProfile[] {
+function syncDefaultTextProfileApiKey(profiles: ApiProfile[], separateAgentProfileKeys: boolean): ApiProfile[] {
+  if (separateAgentProfileKeys) return profiles
   const imageProfile = profiles.find((profile) => profile.id === DEFAULT_OPENAI_PROFILE_ID)
   const textProfile = profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)
   if (!imageProfile?.apiKey.trim() || !textProfile || textProfile.apiKey.trim()) return profiles
@@ -558,9 +559,12 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
     streamImages: typeof record.streamImages === 'boolean' ? record.streamImages : undefined,
     streamPartialImages: normalizeStreamPartialImages(record.streamPartialImages),
   })
+  const separateAgentProfileKeys = typeof record.separateAgentProfileKeys === 'boolean' ? record.separateAgentProfileKeys : false
   const profiles = syncDefaultTextProfileApiKey(Array.isArray(record.profiles) && record.profiles.length
     ? record.profiles.map((profile) => normalizeApiProfile(profile, undefined, customProviderIds))
-    : [legacyProfile])
+    : [legacyProfile],
+    separateAgentProfileKeys,
+  )
   const activeProfileId = typeof record.activeProfileId === 'string' && profiles.some((p) => p.id === record.activeProfileId)
     ? record.activeProfileId
     : profiles[0].id
@@ -603,6 +607,7 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
     agentMathFormattingPrompt: typeof record.agentMathFormattingPrompt === 'boolean' ? record.agentMathFormattingPrompt : true,
     textModel,
     agentApiConfigMode,
+    separateAgentProfileKeys,
     agentTextProfileId,
     agentImageProfileId,
     profiles,
@@ -949,6 +954,7 @@ export const DEFAULT_SETTINGS: AppSettings = normalizeSettings({
   agentWebSearch: false,
   agentMathFormattingPrompt: true,
   agentApiConfigMode: 'hybrid',
+  separateAgentProfileKeys: false,
   agentTextProfileId: DEFAULT_TEXT_PROFILE_ID,
   agentImageProfileId: DEFAULT_OPENAI_PROFILE_ID,
   profiles: [DEFAULT_IMAGE_PROFILE, DEFAULT_TEXT_PROFILE],

@@ -153,6 +153,7 @@ describe('default profiles', () => {
     expect(DEFAULT_SETTINGS.activeProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
     expect(DEFAULT_SETTINGS.enterSubmit).toBe(true)
     expect(DEFAULT_SETTINGS.agentApiConfigMode).toBe('hybrid')
+    expect(DEFAULT_SETTINGS.separateAgentProfileKeys).toBe(false)
     expect(DEFAULT_SETTINGS.agentTextProfileId).toBe(DEFAULT_TEXT_PROFILE_ID)
     expect(DEFAULT_SETTINGS.agentImageProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
   })
@@ -188,6 +189,28 @@ describe('default profiles', () => {
     })
 
     expect(normalized.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('text-key')
+  })
+
+  it('separateAgentProfileKeys 为 true 时不同步图像 key 到文本 profile', () => {
+    const imageProfile = createDefaultOpenAIProfile({ apiKey: 'image-key' })
+    const textProfile = createDefaultOpenAIProfile({
+      id: DEFAULT_TEXT_PROFILE_ID,
+      name: '文本模型',
+      apiKey: '',
+      model: DEFAULT_RESPONSES_MODEL,
+      apiMode: 'responses',
+      streamImages: true,
+    })
+
+    const normalized = normalizeSettings({ separateAgentProfileKeys: true, profiles: [imageProfile, textProfile] })
+
+    expect(normalized.profiles.find((profile) => profile.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('')
+    expect(normalized.profiles.find((profile) => profile.id === DEFAULT_OPENAI_PROFILE_ID)?.apiKey).toBe('image-key')
+  })
+
+  it('separateAgentProfileKeys 默认 false（非布尔值回退）', () => {
+    expect(normalizeSettings({}).separateAgentProfileKeys).toBe(false)
+    expect(normalizeSettings({ separateAgentProfileKeys: 'yes' }).separateAgentProfileKeys).toBe(false)
   })
 })
 

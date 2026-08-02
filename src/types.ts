@@ -116,6 +116,8 @@ export interface AppSettings {
   agentApiConfigMode: AgentApiConfigMode
   agentTextProfileId?: string | null
   agentImageProfileId?: string | null
+  /** 简易配置弹窗中分别设置图像模型与文本模型的 API Key（false：两模型共用同一 Key） */
+  separateAgentProfileKeys: boolean
   profiles: ApiProfile[]
   activeProfileId: string
 }
