@@ -63,6 +63,8 @@ export function normalizeImageSize(size: string) {
   const trimmed = size.trim()
   const match = trimmed.match(SIZE_PATTERN)
   if (!match) return trimmed
+  // 预设尺寸是人工校验过的合法值（如 1254x1254），无需按 16 倍数规整
+  if (PRESET_1K_SIZE_VALUES.has(trimmed)) return trimmed
 
   const { width, height } = normalizeDimensions(Number(match[1]), Number(match[2]))
   return `${width}x${height}`
@@ -72,6 +74,8 @@ export function normalizeCodexCliImageSize(size: string) {
   const trimmed = size.trim()
   const match = trimmed.match(SIZE_PATTERN)
   if (!match) return trimmed
+  // 1K 预设值直接放行；2K/4K 预设不在豁免集合内，仍会被裁剪回 1K 预算
+  if (PRESET_1K_SIZE_VALUES.has(trimmed)) return trimmed
 
   const originalWidth = Number(match[1])
   const originalHeight = Number(match[2])
@@ -200,14 +204,14 @@ const TIER_PIXEL_BUDGET: Record<SizeTier, number> = {
  */
 const COMMON_SIZE_PRESETS: Record<SizeTier, Record<PresetRatio, string>> = {
   '1K': {
-    '1:1': '1024x1024',
+    '1:1': '1254x1254',
     '3:2': '1536x1024',
     '2:3': '1024x1536',
-    '16:9': '1280x720',
-    '9:16': '720x1280',
-    '4:3': '1024x768',
-    '3:4': '768x1024',
-    '21:9': '1280x544',
+    '16:9': '1672x940',
+    '9:16': '940x1672',
+    '4:3': '1451x1084',
+    '3:4': '1084x1451',
+    '21:9': '1922x818',
   },
   '2K': {
     '1:1': '2048x2048',
@@ -231,14 +235,19 @@ const COMMON_SIZE_PRESETS: Record<SizeTier, Record<PresetRatio, string>> = {
   },
 }
 
+const PRESET_1K_SIZE_VALUES = new Set(Object.values(COMMON_SIZE_PRESETS['1K']))
+
 function getPresetRatioKey(ratioWidth: number, ratioHeight: number): PresetRatio | null {
   if (!Number.isInteger(ratioWidth) || !Number.isInteger(ratioHeight)) return null
 
   const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b)
   const divisor = gcd(ratioWidth, ratioHeight)
   const key = `${ratioWidth / divisor}:${ratioHeight / divisor}`
+  if (key in COMMON_SIZE_PRESETS['1K']) return key as PresetRatio
 
-  return key in COMMON_SIZE_PRESETS['1K'] ? key as PresetRatio : null
+  // 21:9 的既约形式是 7:3，规约后会错过预设键，需再按原比例匹配一次
+  const rawKey = `${ratioWidth}:${ratioHeight}`
+  return rawKey in COMMON_SIZE_PRESETS['1K'] ? rawKey as PresetRatio : null
 }
 
 const MAX_RATIO_ERROR = 0.01

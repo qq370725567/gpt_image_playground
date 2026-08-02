@@ -3912,7 +3912,7 @@ describe('agent built-in image tool failure', () => {
     await submitAgentMessage()
     await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
 
-    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].params.size).toBe('1024x1024')
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].params.size).toBe('1254x1254')
   })
 
   it('does not apply Codex text-profile limits to a non-Codex image profile', async () => {
