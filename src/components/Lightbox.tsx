@@ -726,6 +726,8 @@ function LightboxInner({ src, imageId, maskPreviewSrc, onClose, showNav, current
       {showNav && !isZoomed && (
         <>
           <button
+            type="button"
+            aria-label="上一张"
             className={`${navBtnClass} left-3 sm:left-5`}
             onClick={(e) => { e.stopPropagation(); goPrev() }}
           >
@@ -734,6 +736,8 @@ function LightboxInner({ src, imageId, maskPreviewSrc, onClose, showNav, current
             </svg>
           </button>
           <button
+            type="button"
+            aria-label="下一张"
             className={`${navBtnClass} right-3 sm:right-5`}
             onClick={(e) => { e.stopPropagation(); goNext() }}
           >

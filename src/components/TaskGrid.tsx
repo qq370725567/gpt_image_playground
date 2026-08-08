@@ -11,6 +11,7 @@ export default function TaskGrid() {
   const activeFavoriteCollectionId = useStore((s) => s.activeFavoriteCollectionId)
   const defaultFavoriteCollectionId = useStore((s) => s.defaultFavoriteCollectionId)
   const setDetailTaskId = useStore((s) => s.setDetailTaskId)
+  const setLightboxImageId = useStore((s) => s.setLightboxImageId)
   const setConfirmDialog = useStore((s) => s.setConfirmDialog)
   const selectedTaskIds = useStore((s) => s.selectedTaskIds)
   const setSelectedTaskIds = useStore((s) => s.setSelectedTaskIds)
@@ -44,6 +45,10 @@ export default function TaskGrid() {
       return taskMatchesSearchQuery(t, q)
     })
   }, [tasks, searchQuery, filterStatus, filterFavorite, activeFavoriteCollectionId, defaultFavoriteCollectionId])
+
+  const galleryImageIds = useMemo(() => Array.from(new Set(
+    filteredTasks.flatMap((task) => task.status === 'done' ? task.outputImages : []),
+  )), [filteredTasks])
 
   const handleDelete = (task: typeof tasks[0]) => {
     setConfirmDialog({
@@ -292,6 +297,20 @@ export default function TaskGrid() {
           <div key={task.id} className="task-card-wrapper" data-task-id={task.id}>
             <TaskCard
               task={task}
+              onPreview={(e) => {
+                if (Date.now() < suppressClickUntil.current) {
+                  e.preventDefault()
+                  return
+                }
+                suppressClickUntil.current = 0
+                const isCtrl = isMac ? e.metaKey : e.ctrlKey
+                if (isCtrl) {
+                  useStore.getState().toggleTaskSelection(task.id)
+                  return
+                }
+
+                setLightboxImageId(task.outputImages[0], galleryImageIds)
+              }}
               onClick={(e) => {
                 if (Date.now() < suppressClickUntil.current) {
                   e.preventDefault()

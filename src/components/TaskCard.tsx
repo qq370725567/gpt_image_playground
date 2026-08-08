@@ -14,6 +14,7 @@ interface Props {
   onReuse: () => void
   onEditOutputs: () => void
   onDelete: () => void
+  onPreview?: (e: React.MouseEvent) => void
   onClick: (e: React.MouseEvent | React.TouchEvent) => void
   isSelected?: boolean
   disableSwipe?: boolean
@@ -63,6 +64,7 @@ export default function TaskCard({
   onReuse,
   onEditOutputs,
   onDelete,
+  onPreview,
   onClick,
   isSelected,
   disableSwipe,
@@ -401,7 +403,20 @@ export default function TaskCard({
       )}
       <div className="flex h-40">
         {/* 左侧图片区域 */}
-        <div className="w-40 min-w-[10rem] h-full bg-gray-100 dark:bg-black/20 relative flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div
+          data-task-cover={task.id}
+          className="w-40 min-w-[10rem] h-full bg-gray-100 dark:bg-black/20 relative flex items-center justify-center overflow-hidden flex-shrink-0"
+          onClick={(e) => {
+            if (!onPreview || task.status !== 'done' || !task.outputImages.length) return
+            if (Date.now() < suppressClickUntilRef.current) {
+              e.preventDefault()
+              e.stopPropagation()
+              return
+            }
+            e.stopPropagation()
+            onPreview(e)
+          }}
+        >
           {task.status === 'running' && streamPreviewSrc && (
             <>
               <img
