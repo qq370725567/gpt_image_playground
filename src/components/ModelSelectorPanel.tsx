@@ -8,6 +8,9 @@ const TEXT_MODEL_TOOLTIPS: Record<string, string> = {
   'gpt-5.6-luna': '轻量快速型文本模型。响应速度最快、成本最低，适合简单对话与快速生成任务，复杂需求可切换到更高阶模型。',
 }
 
+const IMAGE_MODEL_TOOLTIP =
+  '旗舰级图像模型。原生多模态理解，忠实还原复杂画面指令，细节、光影与画面内文字渲染出色，支持文生图、图生图与局部重绘，适合追求最佳出图效果的场景。'
+
 export default function ModelSelectorPanel() {
   const settings = useStore((s) => s.settings)
   const setSettings = useStore((s) => s.setSettings)
@@ -21,8 +24,8 @@ export default function ModelSelectorPanel() {
         <Select
           value="gpt-image-2"
           onChange={() => {}}
-          options={[{ label: 'gpt-image-2', value: 'gpt-image-2' }]}
-          showValueTooltips={false}
+          options={[{ label: 'gpt-image-2', value: 'gpt-image-2', tooltip: IMAGE_MODEL_TOOLTIP }]}
+          showValueTooltips
           className={selectClass}
         />
       </label>
