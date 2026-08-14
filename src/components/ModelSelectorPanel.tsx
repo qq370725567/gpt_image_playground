@@ -22,7 +22,6 @@ export default function ModelSelectorPanel() {
           value="gpt-image-2"
           onChange={() => {}}
           options={[{ label: 'gpt-image-2', value: 'gpt-image-2' }]}
-          disabled
           showValueTooltips={false}
           className={selectClass}
         />
