@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { useStore, reuseConfig, editOutputs, removeTask, showCodexCliPrompt, getCodexCliPromptKey, retryTask } from '../store'
+import { useStore, reuseConfig, editOutputs, requestTaskDeletion, showCodexCliPrompt, getCodexCliPromptKey, retryTask } from '../store'
 import { useCloseOnEscape } from '../hooks/useCloseOnEscape'
 import { usePreventBackgroundScroll } from '../hooks/usePreventBackgroundScroll'
 import { useTooltip } from '../hooks/useTooltip'
@@ -22,7 +22,6 @@ export default function DetailModal() {
   const detailTaskId = useStore((s) => s.detailTaskId)
   const setDetailTaskId = useStore((s) => s.setDetailTaskId)
   const setLightboxImageId = useStore((s) => s.setLightboxImageId)
-  const setConfirmDialog = useStore((s) => s.setConfirmDialog)
   const showToast = useStore((s) => s.showToast)
   const openFavoritePicker = useStore((s) => s.openFavoritePicker)
   const settings = useStore((s) => s.settings)
@@ -304,11 +303,7 @@ export default function DetailModal() {
 
   const handleDelete = () => {
     setDetailTaskId(null)
-    setConfirmDialog({
-      title: '删除任务',
-      message: '确定要删除这个任务吗？关联的图片资源也会被清理（如果没有其他任务引用）。',
-      action: () => removeTask(task),
-    })
+    requestTaskDeletion(task)
   }
 
   const handleToggleFavorite = () => {

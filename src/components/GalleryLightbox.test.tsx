@@ -65,6 +65,7 @@ function dispatchTouch(el: Element, type: string, touches: Array<{ clientX: numb
 
 beforeEach(() => {
   document.body.innerHTML = ''
+  window.localStorage.clear()
   useStore.setState({
     settings: DEFAULT_SETTINGS,
     tasks: [],
@@ -135,6 +136,18 @@ describe('画廊封面预览', () => {
 
     expect(useStore.getState().selectedTaskIds).toEqual(['task-a'])
     expect(useStore.getState().lightboxImageId).toBeNull()
+  })
+
+  it('任务卡片删除确认支持今日不再提示', async () => {
+    useStore.setState({ tasks: [task({ id: 'task-delete' })] })
+
+    const container = await render(<TaskGrid />)
+    const deleteButton = container.querySelector('button[aria-label="删除任务"]') as HTMLButtonElement
+
+    act(() => deleteButton.click())
+
+    expect(useStore.getState().confirmDialog?.title).toBe('删除任务')
+    expect(useStore.getState().confirmDialog?.checkbox?.label).toBe('今日不再提示')
   })
 })
 

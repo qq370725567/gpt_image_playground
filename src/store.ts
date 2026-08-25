@@ -68,6 +68,7 @@ import { ALL_FAVORITES_COLLECTION_ID, DEFAULT_FAVORITE_COLLECTION_ID, createDefa
 import { createPersistedState, mergePersistedAgentConversations, migratePersistedState, normalizePersistedState } from './lib/persistedState'
 import { addImageSizeParam, createTaskDonePatch, createTaskErrorPatch, deriveAgentImageActualParams, deriveGalleryActualParams, firstActualParams, hasActualParams, hasActualSizeParam, mapActualParamsByImage, mapRevisedPromptsByImage, markInterruptedOpenAIRunningTasks } from './lib/taskState'
 import { stripInjectedCodexCliSizePrompt } from './lib/size'
+import { shouldSkipTaskDeleteConfirmation, skipTaskDeleteConfirmationForToday } from './lib/taskDeleteConfirmation'
 
 const FAL_RECOVERY_POLL_MS = 10_000
 const CUSTOM_RECOVERY_POLL_MS = 10_000
@@ -153,6 +154,27 @@ function orderImagesWithMaskFirst(images : InputImage[], maskTargetImageId : str
 
 export function isAgentTask(task : TaskRecord) {
   return task.sourceMode === 'agent' || Boolean(task.agentConversationId || task.agentRoundId)
+}
+
+export function requestTaskDeletion(task : TaskRecord) {
+  if (shouldSkipTaskDeleteConfirmation()) {
+    void removeTask(task)
+    return
+  }
+
+  useStore.getState().setConfirmDialog({
+    title: '删除任务',
+    message: '确定要删除这个任务吗？关联的图片资源也会被清理（如果没有其他任务引用）。',
+    checkbox: {
+      label: '今日不再提示',
+      tone: 'danger',
+    },
+    awaitAction: true,
+    action: (skipConfirmation) => {
+      if (skipConfirmation) skipTaskDeleteConfirmationForToday()
+      return removeTask(task)
+    },
+  })
 }
 
 function showTaskCompletionNotification(title : string, body : string) {

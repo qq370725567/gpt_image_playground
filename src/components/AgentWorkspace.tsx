@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { AgentMessage, AgentRound, TaskRecord } from '../types'
-import { editOutputs, regenerateAgentAssistantMessage, removeMultipleTasks, removeTask, reuseConfig, useStore } from '../store'
+import { editOutputs, regenerateAgentAssistantMessage, removeMultipleTasks, requestTaskDeletion, reuseConfig, useStore } from '../store'
 import { getActiveAgentRounds, getAgentBranchLeafId, getConversationSearchText, getAgentRoundTaskIds, getAgentSiblingRounds } from '../lib/agentConversationState'
 import { ensureImageCached, getCachedImage } from '../lib/imageCache'
 import { getPromptMentionParts } from '../lib/promptImageMentions'
@@ -877,7 +877,7 @@ export default function AgentWorkspace() {
                                     onClick={() => setDetailTaskId(block.task.id)}
                                     onReuse={() => handleReuse(block.task)}
                                     onEditOutputs={() => editOutputs(block.task)}
-                                    onDelete={() => setConfirmDialog({ title: '删除任务', message: '确定要删除这个任务吗？', action: () => removeTask(block.task) })}
+                                    onDelete={() => requestTaskDeletion(block.task)}
                                   />
                                 </div>
                               )

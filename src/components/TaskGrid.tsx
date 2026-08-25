@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { useStore, reuseConfig, editOutputs, removeTask, taskMatchesFilterStatus, taskMatchesSearchQuery } from '../store'
+import { useStore, reuseConfig, editOutputs, requestTaskDeletion, taskMatchesFilterStatus, taskMatchesSearchQuery } from '../store'
 import { ALL_FAVORITES_COLLECTION_ID, getTaskFavoriteCollectionIds } from '../lib/favoriteState'
 import TaskCard from './TaskCard'
 
@@ -12,7 +12,6 @@ export default function TaskGrid() {
   const defaultFavoriteCollectionId = useStore((s) => s.defaultFavoriteCollectionId)
   const setDetailTaskId = useStore((s) => s.setDetailTaskId)
   const setLightboxImageId = useStore((s) => s.setLightboxImageId)
-  const setConfirmDialog = useStore((s) => s.setConfirmDialog)
   const selectedTaskIds = useStore((s) => s.selectedTaskIds)
   const setSelectedTaskIds = useStore((s) => s.setSelectedTaskIds)
   const clearSelection = useStore((s) => s.clearSelection)
@@ -51,11 +50,7 @@ export default function TaskGrid() {
   )), [filteredTasks])
 
   const handleDelete = (task: typeof tasks[0]) => {
-    setConfirmDialog({
-      title: '删除任务',
-      message: '确定要删除这个任务吗？关联的图片资源也会被清理（如果没有其他任务引用）。',
-      action: () => removeTask(task),
-    })
+    requestTaskDeletion(task)
   }
 
   const getPagePoint = (clientX: number, clientY: number) => ({
