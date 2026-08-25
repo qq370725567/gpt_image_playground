@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { getApiKeyPromptProfileIds, initStore, useStore } from './store'
-import { activateFirstImportedProfile, buildSettingsFromUrlParams, clearUrlSettingParams, hasUrlSettingParams } from './lib/urlSettings'
-import { isDefaultConfigOnlyEnabled, mergeImportedSettings } from './lib/apiProfiles'
-import { getCustomProviderConfigUrl, loadCustomProviderSettingsFromUrl } from './lib/customProviderConfigUrl'
+import { getApiKeyPromptProfileIds, initStore, restoreExplicitPresetConfig, useStore } from './store'
+import { buildSettingsFromUrlParams, clearUrlSettingParams, getExplicitUrlSettingsIds, hasUrlSettingParams } from './lib/urlSettings'
+import { createDefaultOpenAIProfile, hasDefaultPresetConfig, isAgentTextApiProfile, normalizeSettings } from './lib/apiProfiles'
+import { getCustomProviderConfigUrl, hasEmbeddedDefaultConfig, loadCustomProviderSettingsFromUrl, loadEmbeddedDefaultConfig } from './lib/customProviderConfigUrl'
+import { getDefaultPresetProfileId, getPresetProfileIds, isPresetConfigOnlyEnabled, setPresetConfig } from './lib/presetConfig'
 import { useDockerApiUrlMigrationNotice } from './hooks/useDockerApiUrlMigrationNotice'
 import type { AppSettings } from './types'
 import Header from './components/Header'
@@ -23,10 +24,9 @@ import ApiKeyPromptModal from './components/ApiKeyPromptModal'
 import { FavoriteCollectionPickerModal, FavoriteCollectionsView, ManageCollectionsModal } from './components/FavoriteCollections'
 import { useGlobalClickSuppression } from './lib/clickSuppression'
 
-let customProviderConfigUrlImportStarted = false
+let defaultConfigImportStarted = false
 
 export default function App() {
-  const setSettings = useStore((s) => s.setSettings)
   const settings = useStore((s) => s.settings)
   const appMode = useStore((s) => s.appMode)
   const showSettings = useStore((s) => s.showSettings)
@@ -43,16 +43,26 @@ export default function App() {
   useGlobalClickSuppression()
 
   useEffect(() => {
-    if (initializationStartedRef.current) return
+    if (defaultConfigImportStarted || initializationStartedRef.current) return
+    defaultConfigImportStarted = true
     initializationStartedRef.current = true
 
     const searchParams = new URLSearchParams(window.location.search)
     const customProviderConfigUrl = getCustomProviderConfigUrl()
-    const defaultConfigOnly = isDefaultConfigOnlyEnabled()
+    const embeddedDefaultConfig = hasEmbeddedDefaultConfig()
+    const loadDefaultConfig = () => embeddedDefaultConfig
+      ? Promise.resolve().then(() => loadEmbeddedDefaultConfig())
+      : loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
 
-    const applyUrlSettings = (baseSettings: Partial<AppSettings>) => {
-      const nextSettings = buildSettingsFromUrlParams(baseSettings, searchParams)
-      return Object.keys(nextSettings).length ? nextSettings : baseSettings
+    const applyUrlSettings = async (baseSettings: Partial<AppSettings>) => {
+      const ids = getExplicitUrlSettingsIds(searchParams)
+      const restored = await restoreExplicitPresetConfig(ids)
+      const restoredSettings = useStore.getState().settings
+      const sourceSettings = restored
+        ? { ...restoredSettings, ...baseSettings, customProviders: restoredSettings.customProviders, profiles: restoredSettings.profiles }
+        : baseSettings
+      const nextSettings = buildSettingsFromUrlParams(sourceSettings, searchParams)
+      return Object.keys(nextSettings).length ? nextSettings : sourceSettings
     }
 
     const clearAppliedUrlSettings = () => {
@@ -66,56 +76,72 @@ export default function App() {
     }
 
     const initialize = async () => {
-      let configImportPromise: Promise<void> = Promise.resolve()
+      try {
+        await initStore()
 
-      if (customProviderConfigUrl && defaultConfigOnly) {
-        if (!customProviderConfigUrlImportStarted) {
-          customProviderConfigUrlImportStarted = true
-          configImportPromise = loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
-            .then((importedSettings) => {
-              const state = useStore.getState()
-              const baseSettings = importedSettings
-                ? activateFirstImportedProfile(mergeImportedSettings(state.settings, importedSettings), importedSettings)
-                : state.settings
-              state.setSettings(applyUrlSettings(baseSettings))
-              clearAppliedUrlSettings()
-            })
-            .catch((error) => {
-              console.warn('Failed to import custom provider config URL:', error)
-              const state = useStore.getState()
-              state.setSettings(applyUrlSettings(state.settings))
-              clearAppliedUrlSettings()
-            })
+        const importedSettings = embeddedDefaultConfig || customProviderConfigUrl
+          ? await loadDefaultConfig()
+          : hasDefaultPresetConfig()
+            ? {
+                customProviders: [],
+                profiles: [{ ...createDefaultOpenAIProfile(), isDefault: true }],
+              }
+            : null
+        setPresetConfig(importedSettings)
+
+        const state = useStore.getState()
+        if (importedSettings) {
+          await state.setPresetImportedSettings(importedSettings)
+        } else if (state.previousPresetConfig) {
+          await state.setPresetImportedSettings({ customProviders: [], profiles: [] })
         }
-      } else {
-        const nextSettings = buildSettingsFromUrlParams(useStore.getState().settings, searchParams)
-        setSettings(nextSettings)
+
+        const syncedState = useStore.getState()
+        if (!importedSettings) {
+          useStore.setState({ dismissedPresetProfileIds: [], dismissedPresetProviderIds: [] })
+          if (syncedState.settings.profiles.some((profile) => profile.isDefault)) {
+            syncedState.setSettings({
+              profiles: syncedState.settings.profiles.map((profile) => profile.isDefault ? { ...profile, isDefault: undefined } : profile),
+            })
+          }
+        }
+
+        const current = useStore.getState()
+        const presetIds = getPresetProfileIds()
+        const defaultPresetId = getDefaultPresetProfileId()
+        const nextSettings = isPresetConfigOnlyEnabled()
+          ? normalizeSettings({
+              ...current.settings,
+              activeProfileId: presetIds.has(current.settings.activeProfileId)
+                ? current.settings.activeProfileId
+                : defaultPresetId ?? [...presetIds][0],
+              agentTextProfileId: current.settings.agentTextProfileId && presetIds.has(current.settings.agentTextProfileId)
+                ? current.settings.agentTextProfileId
+                : current.settings.profiles.find((profile) => presetIds.has(profile.id) && isAgentTextApiProfile(profile))?.id ?? null,
+              agentImageProfileId: current.settings.agentImageProfileId && presetIds.has(current.settings.agentImageProfileId)
+                ? current.settings.agentImageProfileId
+                : defaultPresetId ?? [...presetIds][0],
+            })
+          : current.settings
+        current.setSettings(await applyUrlSettings(nextSettings))
         clearAppliedUrlSettings()
-
-        if (customProviderConfigUrl && !customProviderConfigUrlImportStarted) {
-          customProviderConfigUrlImportStarted = true
-          configImportPromise = loadCustomProviderSettingsFromUrl(customProviderConfigUrl)
-            .then((importedSettings) => {
-              if (!importedSettings) return
-              const state = useStore.getState()
-              state.setSettings(mergeImportedSettings(state.settings, importedSettings))
-            })
-            .catch((error) => {
-              console.warn('Failed to import custom provider config URL:', error)
-            })
+      } catch (error) {
+        console.warn('Failed to import preset config:', error)
+        setPresetConfig(null)
+        try {
+          const nextSettings = await applyUrlSettings(useStore.getState().settings)
+          useStore.getState().setSettings(nextSettings)
+          clearAppliedUrlSettings()
+        } catch (fallbackError) {
+          console.warn('Failed to apply URL settings:', fallbackError)
         }
+      } finally {
+        setAppReady(true)
       }
-
-      const results = await Promise.allSettled([initStore(), configImportPromise])
-      const initResult = results[0]
-      if (initResult.status === 'rejected') {
-        console.warn('Failed to initialize local data:', initResult.reason)
-      }
-      setAppReady(true)
     }
 
     void initialize()
-  }, [setSettings])
+  }, [])
 
   useEffect(() => {
     if (!appReady || startupApiKeyCheckRef.current || apiKeyPrompt || showSettings) return
