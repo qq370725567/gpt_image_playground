@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { clearFailedTasks, useStore, taskMatchesFilterStatus, taskMatchesSearchQuery } from '../store'
+import { clearFailedTasks, clearGalleryTasks, isAgentTask, useStore, taskMatchesFilterStatus, taskMatchesSearchQuery } from '../store'
 import { ALL_FAVORITES_COLLECTION_ID, getTaskFavoriteCollectionIds } from '../lib/favoriteState'
 import { useTooltip } from '../hooks/useTooltip'
 import Select from './Select'
@@ -51,6 +51,7 @@ export default function SearchBar() {
   const filterStatus = useStore((s) => s.filterStatus)
   const setFilterStatus = useStore((s) => s.setFilterStatus)
   const clearSelection = useStore((s) => s.clearSelection)
+  const tasks = useStore((s) => s.tasks)
   const filterFavorite = useStore((s) => s.filterFavorite)
   const setFilterFavorite = useStore((s) => s.setFilterFavorite)
   const activeFavoriteCollectionId = useStore((s) => s.activeFavoriteCollectionId)
@@ -71,6 +72,7 @@ export default function SearchBar() {
   const inCollectionOverview = filterFavorite && !activeFavoriteCollectionId
   const isFailedFilter = filterStatus === 'error'
   const favoriteTooltip = activeFavoriteCollectionId ? '返回收藏夹' : filterFavorite ? '退出收藏夹' : '收藏夹'
+  const galleryTaskCount = tasks.filter((task) => !isAgentTask(task)).length
 
   useEffect(() => {
     const handleDocumentMouseDown = (event: MouseEvent) => {
@@ -123,6 +125,27 @@ export default function SearchBar() {
     })
   }
 
+  const handleClearGallery = () => {
+    if (galleryTaskCount === 0) return
+
+    const outputImageCount = new Set(
+      tasks
+        .filter((task) => !isAgentTask(task))
+        .flatMap((task) => task.outputImages || []),
+    ).size
+    const imageText = outputImageCount > 0 ? `、${outputImageCount} 张输出图片` : ''
+    setConfirmDialog({
+      title: '清空画廊',
+      message: `确定要清空整个画廊吗？将删除 ${galleryTaskCount} 个画廊任务${imageText}，以及不再被引用的图片资源。\n\nAgent 对话、Agent 生成记录、API 配置和当前输入参考图不会受影响。此操作不可恢复。`,
+      confirmText: '清空画廊',
+      cancelText: '取消',
+      tone: 'danger',
+      minConfirmDelayMs: 500,
+      awaitAction: true,
+      action: () => clearGalleryTasks(),
+    })
+  }
+
   const handleStatusChange = (val: any) => {
     if (val === filterStatus) return
     setFilterStatus(val)
@@ -130,7 +153,7 @@ export default function SearchBar() {
   }
 
   return (
-    <div ref={rootRef} data-no-drag-select className="mt-6 mb-4 flex gap-3">
+    <div ref={rootRef} data-no-drag-select className="mt-6 mb-4 flex min-w-0 gap-3">
       <div className="flex gap-2 flex-shrink-0 z-20">
         <SearchActionButton
           tooltip={favoriteTooltip}
@@ -182,7 +205,7 @@ export default function SearchBar() {
           </>
         )}
       </div>
-      <div className="relative z-10 flex-1">
+      <div className="relative z-10 flex min-w-0 flex-1">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500"
           fill="none"
@@ -204,6 +227,17 @@ export default function SearchBar() {
           placeholder={inCollectionOverview ? '搜索收藏夹名称...' : '搜索提示词、参数...'}
           className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
         />
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <SearchActionButton
+          tooltip="清空整个画廊"
+          onClick={handleClearGallery}
+          disabled={galleryTaskCount === 0}
+          className="flex h-[42px] items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 text-sm text-red-500 transition-all hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-55 dark:border-red-500/25 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+        >
+          <TrashIcon className="h-[18px] w-[18px]" />
+          <span className="hidden sm:inline">清空画廊</span>
+        </SearchActionButton>
       </div>
     </div>
   )

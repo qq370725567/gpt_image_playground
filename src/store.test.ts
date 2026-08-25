@@ -136,7 +136,7 @@ import { callImageApi } from './lib/api'
 import { callAgentResponsesApi, callBatchImageSingle } from './lib/agentApi'
 import { getFalQueuedImageResult } from './lib/falAiImageApi'
 import { removeKeyedBackgroundFromDataUrl } from './lib/transparentImage'
-import { clearData, clearFailedTasks, deleteFavoriteCollection, editOutputs, getApiKeyPromptProfileIds, getErrorToastMessage, getPersistedState, getTaskApiProfile, importData, initStore, regenerateAgentAssistantMessage, removeMultipleTasks, removeTask, restoreExplicitPresetConfig, reuseConfig, stopAgentResponse, submitAgentMessage, submitTask, taskMatchesFilterStatus, taskMatchesSearchQuery, useStore } from './store'
+import { clearData, clearFailedTasks, clearGalleryTasks, deleteFavoriteCollection, editOutputs, getApiKeyPromptProfileIds, getErrorToastMessage, getPersistedState, getTaskApiProfile, importData, initStore, regenerateAgentAssistantMessage, removeMultipleTasks, removeTask, restoreExplicitPresetConfig, reuseConfig, stopAgentResponse, submitAgentMessage, submitTask, taskMatchesFilterStatus, taskMatchesSearchQuery, useStore } from './store'
 
 const commitTaskDeletionImplementation = vi.mocked(commitTaskDeletion).getMockImplementation()!
 const deleteDbImageImplementation = vi.mocked(deleteDbImage).getMockImplementation()!
@@ -3493,6 +3493,28 @@ describe('task deletion', () => {
     expect(state.selectedTaskIds).toEqual([remaining.id])
     expect((await getAllTasks()).map((item) => item.id)).toEqual([remaining.id])
     expect(state.showToast).toHaveBeenCalledWith('任务已删除', 'success')
+  })
+
+  it('clears gallery tasks while preserving Agent tasks and their selection', async () => {
+    const galleryTask = task({ id: 'gallery-task', outputImages: ['gallery-image'] })
+    const agentTask = task({
+      id: 'agent-task',
+      sourceMode: 'agent',
+      agentConversationId: 'conversation-a',
+      agentRoundId: 'round-a',
+      outputImages: ['agent-image'],
+    })
+    await putDbTask(galleryTask)
+    await putDbTask(agentTask)
+    useStore.setState({ tasks: [galleryTask, agentTask], selectedTaskIds: [galleryTask.id, agentTask.id] })
+
+    await clearGalleryTasks()
+
+    const state = useStore.getState()
+    expect(state.tasks).toEqual([agentTask])
+    expect(state.selectedTaskIds).toEqual([agentTask.id])
+    expect((await getAllTasks()).map((item) => item.id)).toEqual([agentTask.id])
+    expect(state.showToast).toHaveBeenCalledWith('画廊已清空，共删除 1 个任务、1 张输出图片', 'success')
   })
 
   it('still deletes the target DB record when sibling payload persistence fails', async () => {

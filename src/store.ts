@@ -151,7 +151,7 @@ function orderImagesWithMaskFirst(images : InputImage[], maskTargetImageId : str
   return next
 }
 
-function isAgentTask(task : TaskRecord) {
+export function isAgentTask(task : TaskRecord) {
   return task.sourceMode === 'agent' || Boolean(task.agentConversationId || task.agentRoundId)
 }
 
@@ -4271,6 +4271,20 @@ export async function removeMultipleTasks(taskIds : string[]) {
   const deletedCount = await removeTasks(taskIds)
   if (deletedCount === 0) return
   useStore.getState().showToast(`已删除 ${deletedCount} 个任务`, 'success')
+}
+
+/** 清空画廊任务（保留 Agent 任务及其关联数据） */
+export async function clearGalleryTasks() {
+  const galleryTasks = useStore.getState().tasks.filter((task) => !isAgentTask(task))
+  if (!galleryTasks.length) return
+
+  const taskIds = galleryTasks.map((task) => task.id)
+  const outputImageCount = new Set(galleryTasks.flatMap((task) => task.outputImages || [])).size
+  const deletedCount = await removeTasks(taskIds)
+  if (deletedCount === 0) return
+
+  const imageText = outputImageCount > 0 ? `、${outputImageCount} 张输出图片` : ''
+  useStore.getState().showToast(`画廊已清空，共删除 ${deletedCount} 个任务${imageText}`, 'success')
 }
 
 /** 删除所有失败任务 */
