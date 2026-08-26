@@ -48,7 +48,7 @@ export default function ApiKeyPromptModal() {
     setError('')
   }, [apiKeyPrompt])
 
-  // sub2api 菜单跳转（URL 携带 user_id / token / src_host）时拉取用户 Key 列表
+  // sub2api 菜单跳转（URL 携带 user_id / token / src_url）时拉取用户 Key 列表
   useEffect(() => {
     if (!apiKeyPrompt) return
     const params = parseSub2ApiKeyParams(new URLSearchParams(window.location.search))

@@ -152,6 +152,12 @@ else params = baseParams
 - UI 文案默认中文。
 - 注释应简洁，说明"为什么"而非"做了什么"——除非逻辑复杂不易一眼看出。
 
+## Git 提交
+
+- Git 提交标题必须遵循 Conventional Commits 格式：`<type>: <中文说明>`，使用 scope 时为 `<type>(<scope>): <中文说明>`。
+- `type` 使用 `feat`、`fix`、`docs`、`refactor`、`test`、`chore`、`build`、`ci`、`perf` 或 `revert`，冒号后保留一个空格，说明部分必须使用中文。
+- 不对提交正文语言作限制。
+
 ## 架构约束
 
 - 新增纯函数或工具逻辑时，放 `src/lib/` 而非 `src/store.ts`。store 文件已过大，应只包含 state 定义和 action 入口。

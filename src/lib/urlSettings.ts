@@ -14,8 +14,9 @@ import {
   normalizeStreamPartialImages,
 } from './apiProfiles'
 import { isPresetConfigOnlyEnabled, isPresetConfigParamsLocked, isPresetProfile } from './presetConfig'
+import { getSub2ApiHostParam } from './sub2apiUrl'
 
-const URL_SETTING_KEYS = ['settings', 'profileId', 'apiUrl', 'apiKey', 'src_host', 'codexCli', 'apiMode', 'model', 'profileName', 'reasoningEffort', 'streamImages', 'streamPartialImages', 'transparentBackgroundMethod']
+const URL_SETTING_KEYS = ['settings', 'profileId', 'apiUrl', 'apiKey', 'src_url', 'src_host', 'codexCli', 'apiMode', 'model', 'profileName', 'reasoningEffort', 'streamImages', 'streamPartialImages', 'transparentBackgroundMethod']
 
 function getProfileDedupKey(profile: Pick<AppSettings['profiles'][number], 'provider' | 'baseUrl' | 'apiKey' | 'model' | 'apiMode' | 'reasoningEffort' | 'codexCli' | 'streamImages' | 'streamPartialImages' | 'transparentBackgroundMethod'>) {
   return JSON.stringify([
@@ -136,7 +137,7 @@ export function activateFirstImportedProfile(settings: AppSettings, importedSett
     : settings
 }
 
-/** src_host 是中转 API 地址（可能不带路径），统一补上 /v1 */
+/** 中转域名可能不带 API 路径，统一补上 /v1 */
 function normalizeSrcHostBaseUrl(srcHost: string): string {
   const normalized = normalizeBaseUrl(srcHost)
   if (!normalized) return ''
@@ -149,7 +150,7 @@ function normalizeSrcHostBaseUrl(srcHost: string): string {
   }
 }
 
-/** sub2api 菜单跳转（src_host 为中转地址）：仅当 profile 仍是默认 OpenAI 地址时才替换为 src_host */
+/** sub2api 菜单跳转：仅当 profile 仍是默认 OpenAI 地址时才替换为中转地址 */
 function applySrcHostBaseUrl(settings: AppSettings, srcHostParam: string | null): AppSettings {
   const srcHostUrl = srcHostParam?.trim() ? normalizeSrcHostBaseUrl(srcHostParam.trim()) : ''
   if (!srcHostUrl) return settings
@@ -229,7 +230,7 @@ function buildPresetConfigOnlySettingsFromUrlParams(currentSettings: Partial<App
   const apiKeyParam = searchParams.get('apiKey')
   const modelParam = searchParams.get('model')
   const profileNameParam = searchParams.get('profileName')
-  const srcHostParam = searchParams.get('src_host')
+  const srcHostParam = getSub2ApiHostParam(searchParams)
   const transparentBackgroundMethodParam = searchParams.get('transparentBackgroundMethod')
   if (apiKeyParam !== null) patch.apiKey = apiKeyParam.trim()
   if (!apiKeyOnly) {
@@ -255,8 +256,7 @@ function buildPresetConfigOnlySettingsFromUrlParams(currentSettings: Partial<App
     if (streamPartialImagesParam !== null) patch.streamPartialImages = normalizeStreamPartialImages(streamPartialImagesParam)
   }
 
-  // sub2api 菜单跳转（src_host 为中转地址）：仅当当前还是默认 OpenAI 地址时才替换
-  const srcHostUrl = srcHostParam?.trim() ? normalizeSrcHostBaseUrl(srcHostParam.trim()) : ''
+  // sub2api 菜单跳转：仅当当前还是默认 OpenAI 地址时才替换
   const srcHostSettings = applySrcHostBaseUrl(settings, srcHostParam)
   if (Object.keys(patch).length === 0 && srcHostSettings === settings && !requestedProfile) return {}
 
@@ -274,7 +274,11 @@ export function hasUrlSettingParams(searchParams: URLSearchParams) {
 }
 
 export function clearUrlSettingParams(searchParams: URLSearchParams) {
-  for (const key of URL_SETTING_KEYS) searchParams.delete(key)
+  for (const key of URL_SETTING_KEYS) {
+    // Key 弹窗在应用初始化完成后才读取这些参数，不能提前清除
+    if (key === 'src_url' || key === 'src_host') continue
+    searchParams.delete(key)
+  }
 }
 
 function buildRegularSettingsFromUrlParams(currentSettings: Partial<AppSettings> | unknown, searchParams: URLSearchParams): Partial<AppSettings> {
@@ -288,7 +292,7 @@ function buildRegularSettingsFromUrlParams(currentSettings: Partial<AppSettings>
   const reasoningEffortParam = searchParams.get('reasoningEffort')
   const profileNameParam = searchParams.get('profileName')
   const profileName = profileNameParam?.trim() ?? ''
-  const srcHostParam = searchParams.get('src_host')
+  const srcHostParam = getSub2ApiHostParam(searchParams)
   const streamImagesParam = searchParams.get('streamImages')
   const streamPartialImagesParam = searchParams.get('streamPartialImages')
   const transparentBackgroundMethodParam = searchParams.get('transparentBackgroundMethod')

@@ -1,6 +1,8 @@
-// sub2api 用户 Key 获取：sub2api 菜单跳转时 URL 携带 src_host（sub2api 地址）/
+// sub2api 用户 Key 获取：sub2api 菜单跳转时 URL 携带 src_url（具体页面地址）/
 // user_id / token，通过管理接口（GET /api/v1/keys，JWT Bearer 认证）拉取当前用户的
-// Key 列表，供 API Key 弹窗下拉选择。兼容其他场景的 apiUrl 参数。
+// Key 列表，供 API Key 弹窗下拉选择。兼容旧版 src_host 和其他场景的 apiUrl 参数。
+
+import { getSub2ApiHostParam } from './sub2apiUrl'
 
 export interface Sub2ApiKey {
   id?: number
@@ -25,7 +27,7 @@ const SUB2_API_KEY_LIST_QUERY = 'page=1&page_size=1000'
 let sub2ApiKeysPromise: Promise<Sub2ApiKey[]> | null = null
 
 export function parseSub2ApiKeyParams(searchParams: URLSearchParams): Sub2ApiKeyFetchParams | null {
-  const baseUrl = (searchParams.get('src_host') ?? searchParams.get('apiUrl') ?? '').trim()
+  const baseUrl = getSub2ApiHostParam(searchParams) || searchParams.get('apiUrl')?.trim() || ''
   const userId = searchParams.get('user_id')?.trim() ?? ''
   const token = searchParams.get('token')?.trim() ?? ''
   if (!baseUrl || !userId || !token) return null

@@ -486,7 +486,7 @@ npm run build
 | `streamPartialImages` | 中间步骤图像数（需配合 streamImages） | `?streamPartialImages=2` |
 | `profileId` | 目标配置 ID；匹配到同 ID 配置时直接更新 | `?profileId=my-service` |
 | `transparentBackgroundMethod` | 透明背景实现方式：`api`（原生）或 `local`（本地后处理） | `?transparentBackgroundMethod=local` |
-| `src_host` | sub2api 中转地址；仅替换仍使用默认 OpenAI 地址的 profile | `?src_host=https://sub2.example.com` |
+| `src_url` | sub2api 页面地址；自动提取 origin，仅替换仍使用默认 OpenAI 地址的 profile（兼容旧版 `src_host`） | `?src_url=https://sub2.example.com/custom/app-id` |
 
 集成示例（New API 聊天系统）：
 

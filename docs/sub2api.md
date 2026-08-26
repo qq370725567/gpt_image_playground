@@ -10,12 +10,13 @@ sub2api 是一站式开源中转服务，将 Claude、OpenAI、Gemini、Grok 等
 **本项目（gpt-image-playground）的集成方式**：sub2api 菜单以 iframe/新窗口方式打开本应用，URL 携带：
 
 ```
-?src_host={sub2api 中转地址}&user_id={用户ID}&token={JWT}&ui_mode=embedded&...
+?src_url={sub2api 页面地址}&user_id={用户ID}&token={JWT}&ui_mode=embedded&...
 ```
 
-- `src_host`：sub2api 中转 API 地址（如 `https://sub2.example.com`），本应用据此：
+- `src_url`：sub2api 页面地址（如 `https://sub2.example.com/custom/app-id`），本应用先提取其 origin（`https://sub2.example.com`），再据此：
   1. 推导管理接口地址（`{origin}/api/v1/keys`）拉取当前用户的 Key 列表，用于 API Key 弹窗下拉选择；
   2. 自动替换图像/文本 profile 的默认 API URL（`{origin}/v1`，仅当当前仍是默认 OpenAI 地址时才替换）。
+- 仍兼容旧版 `src_host` 参数。
 - `user_id` / `token`：sub2api 用户标识与登录态 JWT（管理接口认证用，JWT 中本身含 `user_id`）。
 
 相关代码：
@@ -24,7 +25,7 @@ sub2api 是一站式开源中转服务，将 Claude、OpenAI、Gemini、Grok 等
 | -------------------------------------- | ---------------------------------------------------- |
 | `src/lib/sub2apiKeys.ts`               | 解析 URL 参数、请求 `/api/v1/keys`、防御性解析并过滤 |
 | `src/components/ApiKeyPromptModal.tsx` | 弹窗下拉选择 Key（仅 OpenAI 供应商）                 |
-| `src/lib/urlSettings.ts`               | `src_host` 替换 profile API URL（补 `/v1`）          |
+| `src/lib/urlSettings.ts`               | `src_url` 提取 origin 后替换 profile API URL（补 `/v1`） |
 
 ## 2. 通用约定
 
@@ -335,16 +336,16 @@ Authorization: Bearer <JWT>
 ## 7. 本项目完整调用链（菜单跳转场景）
 
 ```
-sub2api 菜单点击 → 打开 https://{app}/?src_host=https://sub2.example.com&user_id=42&token={JWT}&...
+sub2api 菜单点击 → 打开 https://{app}/?src_url=https://sub2.example.com/custom/app-id&user_id=42&token={JWT}&...
                     │
-                    ├─ urlSettings.ts：src_host → 图像/文本 profile baseUrl = https://sub2.example.com/v1（仅默认地址才替换）
+                    ├─ urlSettings.ts：src_url → 提取 origin → 图像/文本 profile baseUrl = https://sub2.example.com/v1（仅默认地址才替换）
                     │
                     └─ 启动检测到缺少 API Key → ApiKeyPromptModal
                        └─ sub2apiKeys.ts：GET {origin}/api/v1/keys?page=1&page_size=1000
                           （Authorization: Bearer {token}，404 时回退 /api/v1/api-keys）
                           → 过滤 status=active 且 group.platform=openai
                           → 下拉显示 名称（sk-xxxx•••xxxx），选中值即完整 Key
-                          → 保存到 profile.apiKey → 后续请求走 {src_host}/v1/images/generations 等
+                          → 保存到 profile.apiKey → 后续请求走 {origin}/v1/images/generations 等
 ```
 
 ## 8. 常用 curl 示例

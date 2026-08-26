@@ -11,6 +11,27 @@ afterEach(() => {
 })
 
 describe('parseSub2ApiKeyParams', () => {
+  it('extracts the origin from the new src_url param', async () => {
+    const { parseSub2ApiKeyParams } = await importFreshSub2ApiKeys()
+    expect(parseSub2ApiKeyParams(new URLSearchParams(
+      'src_url=https%3A%2F%2Fimage2api.openai-vip.com%2Fcustom%2F939382ecb9cf2afc&user_id=1&token=abc.def',
+    ))).toEqual({
+      baseUrl: 'https://image2api.openai-vip.com',
+      userId: '1',
+      token: 'abc.def',
+    })
+  })
+
+  it('decodes src_url when the encoded value carries an extra encodeURIComponent layer', async () => {
+    const { parseSub2ApiKeyParams } = await importFreshSub2ApiKeys()
+    const srcUrl = encodeURIComponent(encodeURIComponent('https://image2api.openai-vip.com/custom/939382ecb9cf2afc'))
+    expect(parseSub2ApiKeyParams(new URLSearchParams(`src_url=${srcUrl}&user_id=1&token=abc.def`))).toEqual({
+      baseUrl: 'https://image2api.openai-vip.com',
+      userId: '1',
+      token: 'abc.def',
+    })
+  })
+
   it('parses src_host / user_id / token params (sub2api 菜单跳转格式)', async () => {
     const { parseSub2ApiKeyParams } = await importFreshSub2ApiKeys()
     expect(parseSub2ApiKeyParams(new URLSearchParams(
@@ -37,6 +58,17 @@ describe('parseSub2ApiKeyParams', () => {
       'src_host=https://sub2.example.com&apiUrl=https://other.example.com/v1&user_id=1&token=abc',
     ))).toEqual({
       baseUrl: 'https://sub2.example.com',
+      userId: '1',
+      token: 'abc',
+    })
+  })
+
+  it('prefers src_url over the legacy src_host param', async () => {
+    const { parseSub2ApiKeyParams } = await importFreshSub2ApiKeys()
+    expect(parseSub2ApiKeyParams(new URLSearchParams(
+      'src_url=https://new.example.com/custom/app&src_host=https://old.example.com&user_id=1&token=abc',
+    ))).toEqual({
+      baseUrl: 'https://new.example.com',
       userId: '1',
       token: 'abc',
     })

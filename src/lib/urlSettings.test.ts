@@ -387,6 +387,16 @@ describe('URL settings params', () => {
     expect(params.toString()).toBe('foo=bar')
   })
 
+  it('keeps sub2api source params for the API Key prompt', () => {
+    const params = new URLSearchParams('src_url=https://new.example.com/custom/app&src_host=https://old.example.com&apiKey=secret')
+
+    clearUrlSettingParams(params)
+
+    expect(params.get('src_url')).toBe('https://new.example.com/custom/app')
+    expect(params.get('src_host')).toBe('https://old.example.com')
+    expect(params.has('apiKey')).toBe(false)
+  })
+
   it('imports settings with custom providers from URL params', () => {
     const importedSettings = {
       customProviders: [{
@@ -764,6 +774,31 @@ describe('URL settings params', () => {
     expect(next.profiles.find((profile) => profile.id === 'default-text')).toMatchObject({
       baseUrl: 'https://sub2.example.com/v1',
     })
+  })
+
+  it('extracts the origin from src_url before replacing default profile URLs', () => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams(
+        'src_url=https%3A%2F%2Fimage2api.openai-vip.com%2Fcustom%2F939382ecb9cf2afc&user_id=1&token=abc',
+      )),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')?.baseUrl).toBe('https://image2api.openai-vip.com/v1')
+    expect(next.profiles.find((profile) => profile.id === 'default-text')?.baseUrl).toBe('https://image2api.openai-vip.com/v1')
+  })
+
+  it('extracts the origin from an additionally encoded src_url', () => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const srcUrl = encodeURIComponent(encodeURIComponent('https://image2api.openai-vip.com/custom/939382ecb9cf2afc'))
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams(`src_url=${srcUrl}&user_id=1&token=abc`)),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === 'default-openai')?.baseUrl).toBe('https://image2api.openai-vip.com/v1')
+    expect(next.profiles.find((profile) => profile.id === 'default-text')?.baseUrl).toBe('https://image2api.openai-vip.com/v1')
   })
 
   it('does not duplicate the /v1 suffix when src_host already carries it', () => {
