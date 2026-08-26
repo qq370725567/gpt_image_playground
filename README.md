@@ -2,9 +2,9 @@
 
 # 🎨 GPT Image Playground
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/CookSleep/gpt_image_playground?style=flat-square&color=eab308)](https://github.com/CookSleep/gpt_image_playground/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/CookSleep/gpt_image_playground?style=flat-square&color=3b82f6)](https://github.com/CookSleep/gpt_image_playground/network/members)
-[![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](https://github.com/CookSleep/gpt_image_playground/blob/main/LICENSE)
+[![GitHub Repo stars](https://img.shields.io/github/stars/qq370725567/vk_gpt_image_playground?style=flat-square&color=eab308)](https://github.com/qq370725567/vk_gpt_image_playground/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/qq370725567/vk_gpt_image_playground?style=flat-square&color=3b82f6)](https://github.com/qq370725567/vk_gpt_image_playground/network/members)
+[![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](https://github.com/qq370725567/vk_gpt_image_playground/blob/main/LICENSE)
 [![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
@@ -17,7 +17,7 @@
 
 [![Vercel 在线体验](https://img.shields.io/badge/Vercel-%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-black?style=for-the-badge&logo=vercel&logoColor=white)](https://gpt-image-playground.cooksleep.dev)
 &nbsp;&nbsp;&nbsp;
-[![GitHub Pages 在线体验](https://img.shields.io/badge/GitHub%20Pages-%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-222222?style=for-the-badge&logo=github&logoColor=white)](https://cooksleep.github.io/gpt_image_playground)
+[![GitHub Pages 在线体验](https://img.shields.io/badge/GitHub%20Pages-%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-222222?style=for-the-badge&logo=github&logoColor=white)](https://qq370725567.github.io/vk_gpt_image_playground)
 
 </div>
 
@@ -29,7 +29,7 @@
 
 ## 🆕 本分支新增功能（相对原版）
 
-> 本分支 fork 自 [CookSleep/gpt_image_playground](https://github.com/CookSleep/gpt_image_playground) 以下功能均为本分支新增，原版不具备：
+> 本分支维护于 [qq370725567/vk_gpt_image_playground](https://github.com/qq370725567/vk_gpt_image_playground)，以下功能均为本分支新增，原版不具备：
 
 | 功能                              | 说明                                                                                                                                                           | 相对原版的优势                           |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -244,7 +244,7 @@ VITE_DEFAULT_API_URL=https://api.openai.com/v1
 
 **部署**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCookSleep%2Fgpt_image_playground&project-name=gpt-image-playground&repository-name=gpt-image-playground)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fqq370725567%2Fvk_gpt_image_playground&project-name=gpt-image-playground&repository-name=vk-gpt-image-playground)
 
 点击上方按钮导入仓库即可，Vercel 会自动执行构建并部署静态文件。添加或修改环境变量后需要重新部署。
 
@@ -369,7 +369,7 @@ $env:VITE_DEFAULT_API_URL="https://api.openai.com/v1"; npm run deploy:cf
 ```bash
 docker run -d -p 8080:80 \
   -e DEFAULT_API_URL=https://api.openai.com/v1 \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/qq370725567/vk_gpt_image_playground:latest
 ```
 
 开启代理并隐藏真实地址：
@@ -380,7 +380,7 @@ docker run -d -p 8080:80 \
   -e API_PROXY_URL=https://real-api.example.com/v1 \
   -e ENABLE_API_PROXY=true \
   -e LOCK_API_PROXY=true \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/qq370725567/vk_gpt_image_playground:latest
 ```
 
 挂载本地配置文件：
@@ -389,7 +389,7 @@ docker run -d -p 8080:80 \
 docker run -d -p 8080:80 \
   -v ./gpt-image-config.json:/config/gpt-image-config.json:ro \
   -e DEFAULT_API_URL=/config/gpt-image-config.json \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/qq370725567/vk_gpt_image_playground:latest
 ```
 
 使用 host 网络加 `--network host`，修改端口用 `-e PORT=28080`。
@@ -399,7 +399,7 @@ docker run -d -p 8080:80 \
 ```yaml
 services:
   gpt-image-playground:
-    image: ghcr.io/cooksleep/gpt_image_playground:latest
+    image: ghcr.io/qq370725567/vk_gpt_image_playground:latest
     environment:
       - DEFAULT_API_URL=https://api.openai.com/v1
     ports:
@@ -495,7 +495,7 @@ https://gpt-image-playground.cooksleep.dev?apiUrl={address}&apiKey={key}&model={
 ```
 
 ```text
-https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&model={model}
+https://qq370725567.github.io/vk_gpt_image_playground?apiUrl={address}&apiKey={key}&model={model}
 ```
 
 **方式二：自定义格式服务商**
@@ -584,7 +584,7 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
 
 **1. 导入链接（单配置导入，最简单）**
 
-在项目的 [Vercel 在线体验](https://gpt-image-playground.cooksleep.dev) 或 [GitHub Pages 在线体验](https://cooksleep.github.io/gpt_image_playground) 中配置好某个条目后，点击“链接”按钮复制含 `?settings=` 参数的 URL（请勿勾选任何“New API 变量配置”选项），直接填入环境变量即可。
+在项目的 [Vercel 在线体验](https://gpt-image-playground.cooksleep.dev) 或 [GitHub Pages 在线体验](https://qq370725567.github.io/vk_gpt_image_playground) 中配置好某个条目后，点击“链接”按钮复制含 `?settings=` 参数的 URL（请勿勾选任何“New API 变量配置”选项），直接填入环境变量即可。
 
 
 > 💡 **提示**：页面中的“复制导入配置 URL”按钮导出的是**当前选中的单个配置**及其关联的自定义供应商。如需一次性预置包含多个服务商的列表，请使用下方的本地/仓库文件或远程 URL 方式。
@@ -607,7 +607,7 @@ Docker 需要通过 volume 挂载宿主机文件到容器内路径：
 docker run -d -p 8080:80 \
   -v ./gpt-image-config.json:/config/gpt-image-config.json:ro \
   -e DEFAULT_API_URL=/config/gpt-image-config.json \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/qq370725567/vk_gpt_image_playground:latest
 ```
 
 > Docker 环境变量名为 `DEFAULT_API_URL`（不含 `VITE_` 前缀）。
@@ -631,7 +631,7 @@ VITE_DEFAULT_API_URL=https://example.com/gpt-image-config.json
 
 **创建方式：**
 
-1. **在线体验中生成**：打开 [Vercel 在线体验](https://gpt-image-playground.cooksleep.dev) 或 [GitHub Pages 在线体验](https://cooksleep.github.io/gpt_image_playground)，进入 **设置 → API 配置 → 供应商类型 → 创建自定义供应商 → AI 一键生成与导入**，粘贴第三方 API 文档让 AI 生成配置。
+1. **在线体验中生成**：打开 [Vercel 在线体验](https://gpt-image-playground.cooksleep.dev) 或 [GitHub Pages 在线体验](https://qq370725567.github.io/vk_gpt_image_playground)，进入 **设置 → API 配置 → 供应商类型 → 创建自定义供应商 → AI 一键生成与导入**，粘贴第三方 API 文档让 AI 生成配置。
 2. **应用内导出**：生成完成后，在 **API 配置 → 当前配置** 右侧点击“链接按钮”复制含 `?settings=` 参数的分享 URL，可直接用作环境变量值。
 
 也可以参考 [自定义供应商 LLM 提示词](docs/custom-provider-llm-prompt.md)，将提示词和第三方 API 文档直接发给任意 LLM，手动获取完整 JSON。
@@ -732,11 +732,11 @@ VITE_DEFAULT_API_URL=https://example.com/gpt-image-config.json
 ## ⭐ Star History
 
 <div align="center">
-  <a href="https://www.star-history.com/?repos=CookSleep%2Fgpt_image_playground&type=date&legend=top-left">
+  <a href="https://www.star-history.com/?repos=qq370725567%2Fvk_gpt_image_playground&type=date&legend=top-left">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&theme=dark&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
-      <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=qq370725567/vk_gpt_image_playground&type=date&theme=dark&legend=top-left" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=qq370725567/vk_gpt_image_playground&type=date&legend=top-left" />
+      <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=qq370725567/vk_gpt_image_playground&type=date&legend=top-left" />
     </picture>
   </a>
 </div>
