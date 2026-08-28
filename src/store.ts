@@ -3424,13 +3424,21 @@ async function executeAgentRound(
       const functionCallOutputs : ResponsesOutputItem[] = []
 
       if (imageFunctionCalls.length > 0) {
-        for (const fc of imageFunctionCalls) {
+        const executableCalls = multipleImagesRequested ? imageFunctionCalls : imageFunctionCalls.slice(0, 1)
+        for (const fc of executableCalls) {
           const output = await executeSingleImageFunctionCall(fc)
           if (output == null) continue
           functionCallOutputs.push({
             type: 'function_call_output',
             call_id: fc.call_id,
             output,
+          })
+        }
+        for (const fc of imageFunctionCalls.slice(executableCalls.length)) {
+          functionCallOutputs.push({
+            type: 'function_call_output',
+            call_id: fc.call_id,
+            output: JSON.stringify({ error: 'Only one image may be generated before the next user message.' }),
           })
         }
       }
@@ -3488,6 +3496,11 @@ async function executeAgentRound(
         updatedAt: Date.now(),
         rounds: current.rounds.map((item) => item.id === roundId ? { ...item, responseId: lastResponseId, responseOutput: accumulatedOutputItemsWithFunctionOutputs } : item),
       }))
+
+      if (!multipleImagesRequested && imageFunctionCalls.length > 0) {
+        accumulatedOutputItems = accumulatedOutputItemsWithFunctionOutputs
+        break
+      }
 
       if (toolCallsUsed >= maxToolCalls) {
         reachedToolLimit = true
