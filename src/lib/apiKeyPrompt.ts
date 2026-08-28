@@ -21,14 +21,22 @@ export function applyApiKeyPromptSettings(settings: AppSettings, imageApiKey: st
   const normalized = normalizeSettings(settings)
   const imageKey = imageApiKey.trim() || textApiKey.trim()
   const textKey = textApiKey.trim() || imageKey
-  const selectedTextProfile = normalized.profiles.find((profile) =>
-    profile.id === normalized.agentTextProfileId && isAgentTextApiProfile(profile),
-  ) ?? normalized.profiles.find(isAgentTextApiProfile) ?? null
-  const selectedImageProfile = normalized.profiles.find((profile) =>
-    profile.id === normalized.agentImageProfileId && profile.id !== selectedTextProfile?.id,
+  const fixedImageProfile = normalized.profiles.find((profile) =>
+    profile.id === DEFAULT_OPENAI_PROFILE_ID || profile.name === '图像模型',
+  )
+  const fixedTextProfile = normalized.profiles.find((profile) =>
+    (profile.id === DEFAULT_TEXT_PROFILE_ID || profile.name === '文本模型') && isAgentTextApiProfile(profile),
+  )
+  const selectedImageProfile = fixedImageProfile ?? normalized.profiles.find((profile) =>
+    profile.id === normalized.agentImageProfileId && profile.id !== fixedTextProfile?.id,
   ) ?? normalized.profiles.find((profile) =>
-    profile.id === normalized.activeProfileId && profile.id !== selectedTextProfile?.id,
-  ) ?? normalized.profiles.find((profile) => profile.id !== selectedTextProfile?.id) ?? null
+    profile.id === normalized.activeProfileId && profile.id !== fixedTextProfile?.id,
+  ) ?? normalized.profiles.find((profile) => profile.id !== fixedTextProfile?.id) ?? null
+  const selectedTextProfile = fixedTextProfile ?? normalized.profiles.find((profile) =>
+    profile.id === normalized.agentTextProfileId && profile.id !== selectedImageProfile?.id && isAgentTextApiProfile(profile),
+  ) ?? normalized.profiles.find((profile) =>
+    profile.id !== selectedImageProfile?.id && isAgentTextApiProfile(profile),
+  ) ?? null
 
   const imageProfile = selectedImageProfile ?? createDefaultOpenAIProfile({
     id: createProfileId(DEFAULT_OPENAI_PROFILE_ID, normalized.profiles),
@@ -45,7 +53,10 @@ export function applyApiKeyPromptSettings(settings: AppSettings, imageApiKey: st
     } : {}),
   })
   const profilesWithImage = selectedImageProfile
-    ? normalized.profiles.map((profile) => profile.id === imageProfile.id ? { ...profile, apiKey: imageKey } : profile)
+    ? normalized.profiles.map((profile) => profile.id === imageProfile.id
+      ? { ...profile, name: '图像模型', apiKey: imageKey }
+      : profile,
+    )
     : [...normalized.profiles, imageProfile]
   const textProfile = selectedTextProfile ?? createDefaultOpenAIProfile({
     id: createProfileId(DEFAULT_TEXT_PROFILE_ID, profilesWithImage),
@@ -63,7 +74,10 @@ export function applyApiKeyPromptSettings(settings: AppSettings, imageApiKey: st
     }),
   })
   const profiles = selectedTextProfile
-    ? profilesWithImage.map((profile) => profile.id === textProfile.id ? { ...profile, apiKey: textKey } : profile)
+    ? profilesWithImage.map((profile) => profile.id === textProfile.id
+      ? { ...profile, name: '文本模型', apiKey: textKey }
+      : profile,
+    )
     : [...profilesWithImage, textProfile]
 
   return normalizeSettings({
