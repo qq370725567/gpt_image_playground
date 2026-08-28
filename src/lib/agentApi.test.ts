@@ -370,6 +370,43 @@ describe('callAgentResponsesApi', () => {
     expect(body.instructions).not.toContain('## Math formatting')
   })
 
+  it('未明确要求多张时限制为单图并隐藏批量与继续生成工具', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'OK' }] }],
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    const profile = createDefaultOpenAIProfile({ apiKey: 'test-key', apiMode: 'responses' })
+
+    await callAgentResponsesApi({
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'hybrid' },
+      profile,
+      params: DEFAULT_PARAMS,
+      input: '生成图片',
+    })
+
+    let body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))
+    expect(body.instructions).toContain('Generate at most ONE image in this turn')
+    expect(body.tools.map((tool: { name?: string }) => tool.name)).toEqual(['generate_image'])
+
+    await callAgentResponsesApi({
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'hybrid' },
+      profile,
+      params: DEFAULT_PARAMS,
+      input: '生成三张图片',
+      multipleImagesRequested: true,
+    })
+
+    body = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))
+    expect(body.instructions).toContain('Generate exactly the requested number and then stop')
+    expect(body.tools.map((tool: { name?: string }) => tool.name)).toEqual([
+      'generate_image',
+      'generate_image_batch',
+      'continue_generation',
+    ])
+  })
+
   it("does not duplicate the assistant message item when response.completed lacks an item id", async () => {
     // `response.completed` can repeat the streamed item without id; it should merge, not append.
     const itemId = "msg_abc123"

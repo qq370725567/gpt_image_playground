@@ -28,6 +28,11 @@ export interface AgentApiResult {
 const AGENT_IMAGE_INSTRUCTIONS = [
   'You are an image-generation assistant in a multi-turn gallery app.',
   '',
+  '## Image count policy',
+  '- Default to generating at most ONE image per user turn.',
+  '- Generate multiple images ONLY when the latest user message explicitly requests a count greater than one. Never infer multiple outputs from a broad task, plural wording, or the number of ideas you can propose.',
+  '- Stop generating as soon as the requested image count is reached. Never create unsolicited alternatives or continue generating indefinitely.',
+  '',
   '## Progressive Batch Generation',
   'For multi-image requests, use a progressive batching strategy to ensure consistency:',
   '  1. **Base Reference First:** If the images need to share a consistent style, character, or layout (e.g. PPT slides, storyboards), generate ONE primary image first to establish the visual baseline, then call continue_generation to get another round.',
@@ -59,13 +64,17 @@ const AGENT_MATH_FORMATTING_INSTRUCTIONS = [
   '- Do not use LaTeX delimiters like `\\(...\\)` or `\\[...\\]` in visible assistant text.',
 ].join('\n')
 
-function createAgentInstructions(settings: AppSettings, codexCliSize?: string) {
+function createAgentInstructions(settings: AppSettings, multipleImagesRequested: boolean, codexCliSize?: string) {
   const maxToolRounds = Number.isFinite(settings.agentMaxToolRounds)
     ? Math.max(1, Math.trunc(settings.agentMaxToolRounds))
     : DEFAULT_AGENT_MAX_TOOL_ROUNDS
-  const imageToolInstruction = settings.agentApiConfigMode === 'hybrid'
-    ? 'Use generate_image for single-image requests and generate_image_batch for concurrent multi-image requests. The built-in image_generation tool is not available in this session.'
-    : 'Use image_generation for single-image requests and generate_image_batch for concurrent multi-image requests.'
+  const imageToolInstruction = multipleImagesRequested
+    ? settings.agentApiConfigMode === 'hybrid'
+      ? 'Use generate_image for single or prerequisite images and generate_image_batch for concurrent multi-image requests. The built-in image_generation tool is not available in this session.'
+      : 'Use image_generation for single or prerequisite images and generate_image_batch for concurrent multi-image requests.'
+    : settings.agentApiConfigMode === 'hybrid'
+      ? 'Use generate_image at most once. The batch and continuation tools are unavailable in this session.'
+      : 'Use image_generation at most once. The batch and continuation tools are unavailable in this session.'
   const imageInstructions = settings.agentApiConfigMode === 'hybrid'
     ? AGENT_IMAGE_INSTRUCTIONS.replace(/image_generation/g, 'generate_image')
     : AGENT_IMAGE_INSTRUCTIONS
@@ -73,9 +82,14 @@ function createAgentInstructions(settings: AppSettings, codexCliSize?: string) {
     imageInstructions,
     '',
     '## Tool policy',
+    multipleImagesRequested
+      ? '- The latest user message explicitly requests multiple images. Generate exactly the requested number and then stop.'
+      : '- The latest user message does not explicitly request more than one image. Generate at most ONE image in this turn, then stop all image-generation tool calls.',
     `- Current maximum tool-use rounds for this Agent turn: ${maxToolRounds}.`,
     `- ${imageToolInstruction}`,
-    '- Call continue_generation ONLY when you have generated a prerequisite image and need another round to generate dependent images. Do NOT call it when the task is complete.',
+    ...(multipleImagesRequested
+      ? ['- Call continue_generation ONLY when you have generated a prerequisite image and need another round to generate dependent images. Do NOT call it when the task is complete.']
+      : []),
     '- When web_search is available, use it only when current external information would improve the answer or the user asks for research/news/facts.',
     '- When the requested task is complete, stop calling tools and provide the final response.',
   ]
@@ -165,13 +179,18 @@ function createGenerateImageFunctionTool() {
   }
 }
 
-function createAgentTools(params: TaskParams, profile: ApiProfile, settings: AppSettings, maskDataUrl?: string): Array<Record<string, unknown>> {
+function createAgentTools(params: TaskParams, profile: ApiProfile, settings: AppSettings, multipleImagesRequested: boolean, maskDataUrl?: string): Array<Record<string, unknown>> {
   const tools: Array<Record<string, unknown>> = settings.agentApiConfigMode === 'hybrid'
     ? [createGenerateImageFunctionTool()]
     : [createImageTool(params, profile, maskDataUrl)]
   const singleImageToolInstruction = settings.agentApiConfigMode === 'hybrid'
     ? 'For single images or prerequisite/base images, use the generate_image tool instead.'
     : 'For single images or prerequisite/base images, use the built-in image_generation tool instead.'
+
+  if (!multipleImagesRequested) {
+    if (settings.agentWebSearch) tools.push({ type: 'web_search' })
+    return tools
+  }
 
   // generate_image_batch: custom function tool for concurrent multi-image generation
   tools.push({
@@ -591,6 +610,7 @@ export async function callAgentResponsesApi(opts: {
   settings: AppSettings
   profile: ApiProfile
   imageProfile?: ApiProfile
+  multipleImagesRequested?: boolean
   params: TaskParams
   input: unknown
   maskDataUrl?: string
@@ -602,7 +622,7 @@ export async function callAgentResponsesApi(opts: {
   onImageToolCompleted?: (image: AgentApiResultImage) => void | Promise<void>
   onImageToolFailed?: (event: AgentApiImageToolFailure) => void | Promise<void>
 }): Promise<AgentApiResult> {
-  const { settings, profile, imageProfile, params, input, maskDataUrl, signal, onTextDelta, onOutputItems, onImageToolStarted, onImagePartialImage, onImageToolCompleted, onImageToolFailed } = opts
+  const { settings, profile, imageProfile, multipleImagesRequested = false, params, input, maskDataUrl, signal, onTextDelta, onOutputItems, onImageToolStarted, onImagePartialImage, onImageToolCompleted, onImageToolFailed } = opts
   const mime = MIME_MAP[params.output_format] || 'image/png'
   const proxyConfig = readClientDevProxyConfig()
   const useApiProxy = shouldUseApiProxy(profile.apiProxy, proxyConfig)
@@ -615,9 +635,9 @@ export async function callAgentResponsesApi(opts: {
   try {
     const body: Record<string, unknown> = {
       model: profile.model || settings.model,
-      instructions: createAgentInstructions(settings, (imageProfile ?? profile).codexCli ? params.size : undefined),
+      instructions: createAgentInstructions(settings, multipleImagesRequested, (imageProfile ?? profile).codexCli ? params.size : undefined),
       input,
-      tools: createAgentTools(params, profile, settings, maskDataUrl),
+      tools: createAgentTools(params, profile, settings, multipleImagesRequested, maskDataUrl),
     }
     if (profile.reasoningEffort) body.reasoning = { effort: profile.reasoningEffort }
     if (profile.streamImages) {

@@ -4215,6 +4215,22 @@ describe('agent text model selection', () => {
     await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
 
     expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].profile.model).toBe('gpt-5.6-sol')
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].multipleImagesRequested).toBe(false)
+  })
+
+  it('仅在用户明确指定多图数量时启用多图生成', async () => {
+    useStore.setState({ prompt: '请生成三张不同风格的图片' })
+    vi.mocked(callAgentResponsesApi).mockResolvedValueOnce({
+      text: '',
+      images: [],
+      outputItems: [],
+      responseId: 'response-multiple-images',
+    })
+
+    await submitAgentMessage()
+    await vi.waitFor(() => expect(callAgentResponsesApi).toHaveBeenCalledTimes(1))
+
+    expect(vi.mocked(callAgentResponsesApi).mock.calls[0][0].multipleImagesRequested).toBe(true)
   })
 
   it('sends the selected text model without a prefix', async () => {
