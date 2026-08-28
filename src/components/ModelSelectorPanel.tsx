@@ -2,13 +2,13 @@ import { TEXT_MODEL_VALUES } from '../lib/apiProfiles'
 import { useStore } from '../store'
 import Select from './Select'
 
-const TEXT_MODEL_TOOLTIPS: Record<string, string> = {
+const TEXT_MODEL_DESCRIPTIONS: Record<string, string> = {
   'gpt-5.6-sol': '旗舰级文本模型。推理与理解能力最强，擅长复杂指令、多轮对话与高质量图像创作指导，适合追求最佳效果的场景。响应较慢、成本较高。',
   'gpt-5.6-terra': '均衡型文本模型。在能力、速度与成本之间取得良好平衡，日常对话与图像生成任务的主力选择，适合大多数场景。',
   'gpt-5.6-luna': '轻量快速型文本模型。响应速度最快、成本最低，适合简单对话与快速生成任务，复杂需求可切换到更高阶模型。',
 }
 
-const IMAGE_MODEL_TOOLTIP =
+const IMAGE_MODEL_DESCRIPTION =
   '旗舰级图像模型。原生多模态理解，忠实还原复杂画面指令，细节、光影与画面内文字渲染出色，支持文生图、图生图与局部重绘，适合追求最佳出图效果的场景。'
 
 export default function ModelSelectorPanel() {
@@ -24,7 +24,7 @@ export default function ModelSelectorPanel() {
         <Select
           value="gpt-image-2"
           onChange={() => {}}
-          options={[{ label: 'gpt-image-2', value: 'gpt-image-2', tooltip: IMAGE_MODEL_TOOLTIP }]}
+          options={[{ label: 'gpt-image-2', value: 'gpt-image-2', tooltip: `gpt-image-2\n${IMAGE_MODEL_DESCRIPTION}` }]}
           showValueTooltips
           className={selectClass}
         />
@@ -34,7 +34,7 @@ export default function ModelSelectorPanel() {
         <Select
           value={settings.textModel}
           onChange={(model) => setSettings({ textModel: model })}
-          options={TEXT_MODEL_VALUES.map((value) => ({ label: value, value, tooltip: TEXT_MODEL_TOOLTIPS[value] }))}
+          options={TEXT_MODEL_VALUES.map((value) => ({ label: value, value, tooltip: `${value}\n${TEXT_MODEL_DESCRIPTIONS[value]}` }))}
           showValueTooltips
           className={selectClass}
         />

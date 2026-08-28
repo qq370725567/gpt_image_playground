@@ -197,7 +197,7 @@ export default function Select({ value, onChange, onReorder, options, disabled, 
         <ChevronDownIcon className={`w-3.5 h-3.5 flex-shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         {showValueTooltips && (
           <ViewportTooltip visible={triggerTooltip.visible} className="max-w-[300px] break-words whitespace-pre-wrap">
-            {selectedOption?.label ?? value}
+            {selectedOption?.tooltip ?? selectedOption?.label ?? value}
           </ViewportTooltip>
         )}
       </div>
