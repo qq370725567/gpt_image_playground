@@ -243,7 +243,7 @@ describe('ApiKeyPromptModal 分别设置模式', () => {
     expect(getActiveApiProfile(after).apiKey).toBe('IMG-K')
   })
 
-  it('分别设置模式下留空的一侧保持原值', () => {
+  it('分别设置模式下只填写一个 Key 时两套配置共用该 Key', () => {
     useStore.setState((st) => ({
       settings: normalizeSettings({
         ...st.settings,
@@ -267,7 +267,7 @@ describe('ApiKeyPromptModal 分别设置模式', () => {
 
     const after = useStore.getState().settings
     expect(after.profiles.find((p) => p.id === DEFAULT_OPENAI_PROFILE_ID)?.apiKey).toBe('IMG-K')
-    expect(after.profiles.find((p) => p.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('K1')
+    expect(after.profiles.find((p) => p.id === DEFAULT_TEXT_PROFILE_ID)?.apiKey).toBe('IMG-K')
   })
 
   it('开启后图像与文本都显示 sub2api 下拉，可分别选择 Key 保存', async () => {
@@ -357,7 +357,7 @@ describe('ApiKeyPromptModal 分别设置模式', () => {
     expect(textInput.value).toBe('sk-manual-old-key')
   })
 
-  it('非 hybrid 模式不显示分别设置开关', () => {
+  it('非 hybrid 模式仍显示分别设置开关，保存后自动切换为混合模式', () => {
     useStore.setState((st) => ({
       settings: normalizeSettings({ ...st.settings, agentApiConfigMode: 'off' }),
     }))
@@ -368,7 +368,52 @@ describe('ApiKeyPromptModal 分别设置模式', () => {
     })
     setup()
 
-    expect(document.querySelector('button[role="switch"]')).toBeNull()
+    expect(document.querySelector('button[role="switch"]')).not.toBeNull()
     expect(document.getElementById('api-key-prompt-input')?.tagName).toBe('INPUT')
+
+    const input = document.getElementById('api-key-prompt-input') as HTMLInputElement
+    typeKey(input, 'K2')
+    submitForm(input.closest('form'))
+
+    const after = useStore.getState().settings
+    expect(after.agentApiConfigMode).toBe('hybrid')
+    expect(after.agentImageProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
+    expect(after.agentTextProfileId).toBe(DEFAULT_TEXT_PROFILE_ID)
+  })
+
+  it('只有图像配置时自动创建并绑定文本配置', () => {
+    useStore.setState((st) => ({
+      settings: normalizeSettings({
+        ...st.settings,
+        agentApiConfigMode: 'off',
+        profiles: [st.settings.profiles.find((p) => p.id === DEFAULT_OPENAI_PROFILE_ID)!],
+        activeProfileId: DEFAULT_OPENAI_PROFILE_ID,
+        agentTextProfileId: null,
+        agentImageProfileId: DEFAULT_OPENAI_PROFILE_ID,
+      }),
+    }))
+
+    act(() => {
+      useStore.getState().openApiKeyPrompt([DEFAULT_OPENAI_PROFILE_ID], { source: 'startup' })
+    })
+    setup()
+
+    const input = document.getElementById('api-key-prompt-input') as HTMLInputElement
+    typeKey(input, 'SHARED-K')
+    submitForm(input.closest('form'))
+
+    const after = useStore.getState().settings
+    expect(after.profiles).toHaveLength(2)
+    expect(after.agentApiConfigMode).toBe('hybrid')
+    expect(after.agentImageProfileId).toBe(DEFAULT_OPENAI_PROFILE_ID)
+    expect(after.agentTextProfileId).toBe(DEFAULT_TEXT_PROFILE_ID)
+    expect(after.profiles.find((p) => p.id === DEFAULT_OPENAI_PROFILE_ID)).toMatchObject({
+      apiKey: 'SHARED-K',
+      apiMode: 'images',
+    })
+    expect(after.profiles.find((p) => p.id === DEFAULT_TEXT_PROFILE_ID)).toMatchObject({
+      apiKey: 'SHARED-K',
+      apiMode: 'responses',
+    })
   })
 })

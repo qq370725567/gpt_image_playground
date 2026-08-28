@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getAllApiKeyPromptProfileIds, regenerateAgentAssistantMessage, submitAgentMessage, submitTask, useStore } from '../store'
+import { regenerateAgentAssistantMessage, submitAgentMessage, submitTask, useStore } from '../store'
 import { usePreventBackgroundScroll } from '../hooks/usePreventBackgroundScroll'
+import { applyApiKeyPromptSettings } from '../lib/apiKeyPrompt'
 import { getSub2ApiKeys, parseSub2ApiKeyParams, type Sub2ApiKey } from '../lib/sub2apiKeys'
 import { DEFAULT_OPENAI_PROFILE_ID, DEFAULT_TEXT_PROFILE_ID } from '../lib/apiProfiles'
 
@@ -35,7 +36,7 @@ export default function ApiKeyPromptModal() {
       .filter((profile): profile is NonNullable<typeof profile> => Boolean(profile))
     : []
 
-  const separateKeys = settings.separateAgentProfileKeys && settings.agentApiConfigMode === 'hybrid'
+  const separateKeys = settings.separateAgentProfileKeys
   const imageProfileId = settings.agentImageProfileId ?? DEFAULT_OPENAI_PROFILE_ID
   const textProfileId = settings.agentTextProfileId ?? DEFAULT_TEXT_PROFILE_ID
 
@@ -104,14 +105,7 @@ export default function ApiKeyPromptModal() {
         setError('请输入 API Key')
         return
       }
-      // 分别设置模式：图像模型与文本模型各自保存非空的 Key，空的一侧保持不变。
-      setSettings({
-        profiles: settings.profiles.map((profile) => {
-          if (nextImageKey && profile.id === imageProfileId) return { ...profile, apiKey: nextImageKey }
-          if (nextTextKey && profile.id === textProfileId) return { ...profile, apiKey: nextTextKey }
-          return profile
-        }),
-      })
+      setSettings(applyApiKeyPromptSettings(settings, nextImageKey, nextTextKey))
     } else {
       const nextApiKey = apiKey.trim()
       if (!nextApiKey) {
@@ -119,18 +113,7 @@ export default function ApiKeyPromptModal() {
         return
       }
 
-      // 简易配置为同步源：在弹窗打开时的 profileIds 基础上，补充当前设置中的
-      // 活跃 + Agent 图像/文本 profile，确保图像模型与文本模型的 key 始终一起更新。
-      const targetIds = new Set([
-        ...apiKeyPrompt.profileIds,
-        ...getAllApiKeyPromptProfileIds(settings),
-      ])
-      setSettings({
-        profiles: settings.profiles.map((profile) => targetIds.has(profile.id)
-          ? { ...profile, apiKey: nextApiKey }
-          : profile,
-        ),
-      })
+      setSettings(applyApiKeyPromptSettings(settings, nextApiKey, nextApiKey))
     }
 
     closeApiKeyPrompt()
@@ -258,24 +241,22 @@ export default function ApiKeyPromptModal() {
             handleSave()
           }}
         >
-          {settings.agentApiConfigMode === 'hybrid' && (
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 dark:border-white/[0.06] dark:bg-white/[0.03]">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">分别设置图像模型和文本模型的 API Key</p>
-                <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">开启后可为两个模型配置不同的 Key，关闭时共用同一个 Key</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSettings({ separateAgentProfileKeys: !settings.separateAgentProfileKeys })}
-                className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${settings.separateAgentProfileKeys ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                role="switch"
-                aria-checked={settings.separateAgentProfileKeys}
-                aria-label="分别设置图像模型和文本模型的 API Key"
-              >
-                <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${settings.separateAgentProfileKeys ? 'translate-x-[14px]' : 'translate-x-[2px]'}`} />
-              </button>
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 dark:border-white/[0.06] dark:bg-white/[0.03]">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">分别设置图像模型和文本模型的 API Key</p>
+              <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">开启后可为两个模型配置不同的 Key，关闭时共用同一个 Key</p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setSettings({ separateAgentProfileKeys: !settings.separateAgentProfileKeys })}
+              className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${settings.separateAgentProfileKeys ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+              role="switch"
+              aria-checked={settings.separateAgentProfileKeys}
+              aria-label="分别设置图像模型和文本模型的 API Key"
+            >
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${settings.separateAgentProfileKeys ? 'translate-x-[14px]' : 'translate-x-[2px]'}`} />
+            </button>
+          </div>
           {separateKeys ? (
             <>
               {renderKeyField('api-key-prompt-image-input', '图像模型 API Key', imageKey, setImageKey, imageCustomKeyMode, setImageCustomKeyMode, true)}
@@ -306,7 +287,7 @@ export default function ApiKeyPromptModal() {
           <button
             type="submit"
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={(separateKeys ? !imageKey.trim() && !textKey.trim() : !apiKey.trim()) || profiles.length === 0}
+            disabled={separateKeys ? !imageKey.trim() && !textKey.trim() : !apiKey.trim()}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
               <path d="M5 12h14M13 6l6 6-6 6" />
